@@ -10,3 +10,7 @@ It can be *trained* to memorize several video sequences and then use it to "watc
 
 It slices videos in separated individual frames in `png` format which will be read and used it as patterns to recognize.
 The frame slicing allows different machines to compute different video sections in parallel.
+
+
+Alberto Montes
+Javier Santacruz
