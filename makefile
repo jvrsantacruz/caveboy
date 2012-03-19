@@ -1,11 +1,11 @@
 DEPS := pnglite/pnglite.h perceptron/pattern.h perceptron/perceptron.h
 
-SRC := caveboy.c
-OBJS := $(SRC:.c=.o)
+SRC := caveboy.c mpi-caveboy.c
 OBJS += $(DEPS:.h=.o)
 TARGETS := $(SRC:%.c=%)
 
 EXE := caveboy
+EXEMPI := mpi-caveboy
 
 TRANSFORMER:= ./transformer.sh
 FRAMES_DIR := ~/commercials_images
@@ -19,6 +19,10 @@ CFLAGS := -g -pg -enable-checking -ggdb -Wall -O0 -pedantic -std=c99 -DDEBUG -Ip
 #CFLAGS := -Wall -O3 -pedantic -std=c99 -Iperceptron 
 LDFLAGS := -lm -lz 
 
+MPICC := mpicc
+MPI_CFLAGS := $(CFLAGS) $(mpicc --showme:compile)
+MPI_LDFLAGS := $(LDFLAGS) $(mpicc --showme:compile) -lmpi
+
 .PHONY: deps clean slice_videos analyze
 
 all: ${TARGETS}
@@ -26,9 +30,13 @@ all: ${TARGETS}
 deps:
 	make -C zlib
 
-${EXE}: ${OBJS}
+${EXE}: ${EXE}.c ${OBJS}
 	@echo Compiling ${EXE}
-	$(CC) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+${EXEMPI}: ${EXEMPI}.c ${OBJS}
+	@echo Compiling ${EXEMPI}
+	$(MPICC) $(MPI_CFLAGS) -o $@ $^ $(MPI_LDFLAGS)
 
 slice_videos: ${VIDEOS}
 	@echo Slicing videos...
