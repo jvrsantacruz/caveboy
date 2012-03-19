@@ -137,16 +137,12 @@ int testing(perceptron per, patternset pset, double radio, char * weights_path, 
 
 			codes[pat] = chosen;
 
-			printf("\nRaw output\n");
-			for(n = 0; n < pset->no; ++n){
-				printf("%f\t", per->net[2][n]);
-			}
-			printf("%d\t", codes[pat]);
-		}
-
-		/* Output to stdout to check */
-		for(pat = 0; pat < pset->npats; ++pat){
 			printf("Pattern %zd ", pat);
+			printf("Raw output layer:\n");
+			for(n = 0; n < pset->no; ++n)
+				printf("%f\t", per->net[2][n]);
+
+			printf("\nPattern %zd ", pat);
 			if( codes[pat] != -1 )
 				printf("recognized as %s (%d)\n",
 						pset->names[codes[pat]], codes[pat]);
