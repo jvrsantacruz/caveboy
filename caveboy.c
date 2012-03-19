@@ -46,7 +46,7 @@ const char * usage = "Usage: %s PATDIR [-irhoam N] [-wez FILE] [-vnt]\n"\
 					  "\t-a N\tLearning rate [0.001]\n"\
 					  "\t-m N\tMax epoch [2000]\n"\
 					  "\t-f N\tVideo fps [10]\n"\
-					  "\t-r N\tNeuron radio [0.3]\n"\
+					  "\t-r N\tNeuron radio [0.1]\n"\
 					  "\t-e FILE\tLog training ECM [error.dat]\n"\
 					  "\t-w FILE\tWeights file (wil be written if training) [weights.dat]\n"\
 					  "\t-z FILE\tSave/Read training info [tinfo.dat]\n"\
@@ -83,10 +83,10 @@ int training(perceptron per, patternset pset, int max_epoch, double alpha,
 }
 
 int testing(perceptron per, patternset pset, double radio, char * weights_path, char * tinfo_path){
-	size_t pat = 0, n = 0, matchs = 0;
+	size_t pat = 0, n = 0, matches = 0;
 	int chosen = 0;
 	int * codes = NULL;
-	double max = 0;
+	double min = 1.0 - radio;
 
 	/* Testing phase uses an already trained net to try to clasificate
 	 * new unknown patterns.
@@ -124,27 +124,28 @@ int testing(perceptron per, patternset pset, double radio, char * weights_path, 
 			 * Undecidible classification if more than 1 neuron 
 			 * has been activated (matchs > 1).
 			 */
-			max = 1.0 - radio;
+			matches = 0;
 			chosen = -1;
 			for(n = 0; n < pset->no; ++n){
-				if( per->net[2][n] > max ) {
-					max = per->net[2][n];
+				if( per->net[2][n] > min ) {
 					chosen = n;
+					++matches;
 
-					/* Only 1 active neuron */
-					if( ++matchs > 1 ) {
+					/* 1 active neuron at most */
+					if( matches > 1 ) {
 						chosen = -1;
 						break;
 					}
 				}
 			}
 
+			codes[pat] = chosen;
+
 			printf("\nRaw output\n");
 			for(n = 0; n < pset->no; ++n){
 				printf("%f\t", per->net[2][n]);
 			}
-
-			codes[pat] = chosen;
+			printf("%d\t", codes[pat]);
 		}
 
 		/* Output to stdout to check */
@@ -162,7 +163,7 @@ int testing(perceptron per, patternset pset, double radio, char * weights_path, 
 
 int main(int argc, char * argv[] ) {
 	double alpha = 0.001,
-		    radio = 0.03;
+		    radio = 0.1;
 
 	int nin = 1, nh = 1, nout = 1, 
 		max_epoch = 2000, fps = 10,
