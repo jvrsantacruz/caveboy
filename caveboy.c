@@ -7,8 +7,6 @@
  *        Created:  20/02/12 16:55:39
  */
 
-/* #define _POSIX_C_SOURCE 1; *//* Activate the use of getopt */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
