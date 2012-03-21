@@ -466,7 +466,6 @@ static int perceptron_backpropagation_alloc_d(perceptron per, double * **d_ptr);
  * @returns 0 if unsuccessful, 1 otherwise
  */
 int perceptron_free(perceptron * per_ptr){
-	int i, j;
 	perceptron per = *per_ptr;
 
 	if( per == NULL ) {
@@ -474,17 +473,12 @@ int perceptron_free(perceptron * per_ptr){
 		return 0;
 	}
 
-	free(per->net[1]);
-	free(per->net[2]);
+	/* Free Net */
+	free(*(per->net));
 	free(per->net);
 
 	/* Free Weights */
-	for(i = 0; i < 2; ++i){
-		for(j = 0; j < per->n[i] + 1; ++j)
-			free(per->w[i][j]);
-		free(per->w[i]);
-	}
-
+	free(*(per->w));
 	free(per->w);
 
 	perceptron_backpropagation_free_d(per, &(per->d));
@@ -510,6 +504,7 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 
 	int ni, nh, no;
 	int i, j;
+	double * raw = NULL;
 	perceptron per = NULL; 
 
 	if((per = (perceptron) malloc (sizeof(perceptron_t))) == NULL)
@@ -539,13 +534,14 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 	if( per->net == NULL )
 		return 1;
 
-	per->net[0] = (double *) malloc (ni * sizeof(double));
-	per->net[1] = (double *) malloc (nh * sizeof(double));
-	per->net[2] = (double *) malloc (no * sizeof(double));
+	/* Alloc contiguous memory for net and split it in layers */
+	raw = (double *) malloc ((ni + nh + no) * sizeof(double));
+	per->net[0] = &(raw[0]);
+	per->net[1] = &(raw[ni]);
+	per->net[2] = &(raw[ni+nh]);
 
-	if( per->net[0] == NULL 
-			|| per->net[1] == NULL 
-			|| per->net[2] == NULL ) {
+	if( raw == NULL ){
+
 		printerr("perceptron_create: Couldn't alloc space for net.\n");
 
 		if( per->net[0] != NULL ) free(per->net[0]);
@@ -576,13 +572,20 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 	/* Input and hidden layers
 	 * ninput neurons + bias to nhidden neurons  */
 
+	/* Alloc contiguous memory for weights and split it within the cube */
+	raw = (double *) malloc (((ni * (nh-1)) + (nh * no)) * sizeof(double));
+	if( raw == NULL ){
+		printerr("perceptron_create: Couldn't alloc space for weight values.");
+		return 0;
+	}
+
 	/* For all neuron and bias weight in the input and hidden layer */
 	for(i = 0; i < 2; ++i) {
 		per->w[i] = (double **) malloc ((per->n[i] + 1) * sizeof(double *));
 
 		/* For all neuron (no bias) in the next layer */
 		for(j = 0; j < per->n[i] + 1; ++j)
-			per->w[i][j] = (double *) malloc (per->n[i + 1] * sizeof(double));
+			per->w[i][j] = &(raw[ (i * ni * (nh-1)) + (j * per->n[i+1]) ]);
 	}
 
 	/* Init delta temporal matrix and cube */
