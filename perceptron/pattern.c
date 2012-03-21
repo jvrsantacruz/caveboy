@@ -151,11 +151,6 @@ static int patternset_init(patternset * pset_ptr, size_t npsets, size_t npats) {
 	return TRUE;
 }
 
-static int patternset_expand(patternset pset, size_t size){
-	pset->input = (double **) realloc (pset->input, size);
-	pset->codes = (size_t *) realloc (pset->codes, size);
-
-	if(pset->input == NULL || pset->codes == NULL )
 		return FALSE;
 
 	return TRUE;
