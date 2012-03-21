@@ -96,13 +96,8 @@ int pattern_create(pattern * pat, unsigned char * upattern, size_t size, size_t 
 		return FALSE;
 	}
 
-	/* Alloc 1 extra 'hidden' double for the bias. 
-	 * To be used later in the perceptron so it will fit sizes */
-	*pat = (double *) malloc ((sizeof(double) * size/bpp) + 1);
-	if( *pat == NULL ){
-		printerr("ERROR: Out of memory\n");
+	if( *pat == NULL )
 		return FALSE;
-	}
 	
 	/* Set each bpp bytes together as a single
 	 * number and convert it to double */
@@ -120,8 +115,8 @@ int pattern_create(pattern * pat, unsigned char * upattern, size_t size, size_t 
 	return size/bpp;
 }
 
-static int patternset_init(patternset * pset_ptr, size_t npsets, size_t npats) {
-	patternset pset = (patternset) malloc (sizeof(patternset_t));
+static int patternset_init(patternset pset, size_t npsets,
+		size_t npats, size_t patsize) {
 	int i = 0;
 
 	if( pset == NULL )
@@ -134,23 +129,23 @@ static int patternset_init(patternset * pset_ptr, size_t npsets, size_t npats) {
 
 	/* Alloc row pointers for each pattern */
 	pset->input = (double **) malloc (sizeof(double *) * npats);
-	pset->codes = (size_t *) malloc (sizeof(size_t) * npats);
 
-	if( pset->names == NULL 
-			|| pset->input == NULL
-			|| pset->codes == NULL )
+	/* Alloc contiguous input memory as a whole.
+	 * Add 1 to patsize to fit perceptron input lenght
+	 * which includes a bias fake value. */
+	patsize += 1;
+	pset->input_raw = (double *) malloc (npats * patsize * sizeof(double));
+	if( pset->input_raw == NULL ){
+		printerr("Couldn't alloc enogh memory for patterns.\n");
+		free(pset->input);
 		return FALSE;
 	}
 
-	/* Set unused names to NULL */
-	for(; i < npsets; ++i) 
-		pset->names[i] = NULL;
+	/* Associate each input row */
+	for(i = 0; i < npats; ++i)
+		pset->input[i] = &(pset->input_raw[i * patsize]);
 
-	*pset_ptr = pset;
-
-	return TRUE;
-}
-
+	if( pset->input == NULL || pset->input_raw == NULL )
 		return FALSE;
 
 	return TRUE;
@@ -561,20 +556,21 @@ int patternset_free(patternset * p) {
 		return TRUE;
 
 	/* Free inputs */
-	if( pset->input != NULL ) {
-		for(i = 0; i < pset->npats; ++i)
-			if( pset->input[i] != NULL ) {
-				free(pset->input[i]);
-				pset->input[i] = NULL;
-			}
+	if(pset->input != NULL ) {
 		free(pset->input);
 		pset->input = NULL;
 	}
 
+	if(pset->input_raw != NULL ) {
+		free(pset->input_raw);
+		pset->input_raw = NULL;
+	}
+
 	/* Free codes */
-	if( pset->codes != NULL )
+	if( pset->codes != NULL ) {
 		free(pset->codes);
-	pset->codes = NULL;
+		pset->codes = NULL;
+	}
 
 	/* Free names */
 	if( pset->names != NULL ) {
