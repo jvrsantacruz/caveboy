@@ -83,30 +83,6 @@ static double perceptron_bipolarsigmoid_prima(double x){
 }
 
 
-/**
- * Weighted sum of values for a given neuron in next layer.
- *
- * @param v Values double vector 
- * @param w Weights double matrix
- * @param neuron Neuron in the next layer to calculate to.
- * @param n Length of both vectors
- * @return Weighted sum.
- */
-static double perceptron_weighted_sum(double * v, double ** w, int neuron, int n){
-	/* int i = 0; */
-	double sum = 0;
-
-	/* From n-1 until 0 (0 included ) */
-	while( n-- )
-		sum += v[n] * w[n][neuron];
-	/*
-	for(i = 0; i < n; ++i)
-		sum += v[i] * w[i][neuron];
-		*/
-
-	return sum;
-}
-
 /** 
  * Computes forward feeding for perceptron given a pattern.
  *
