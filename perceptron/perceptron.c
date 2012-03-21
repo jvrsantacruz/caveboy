@@ -734,9 +734,10 @@ perceptron_fun_trans perceptron_setfunc_trans_prima(perceptron per, double(*fun)
 
 static int perceptron_backpropagation_alloc_rw(perceptron per, double * **d_ptr){
 	double ** rw = (double **) malloc (2 * sizeof(double *));
+	double * rw_raw = (double *) malloc ((per->n[1] + per->n[2]) * sizeof(double));
 	if( rw != NULL ){
-		rw[0] = (double *) malloc (per->n[1] * sizeof(double));
-		rw[1] = (double *) malloc (per->n[2] * sizeof(double));
+		rw[0] = &(rw_raw[0]);
+		rw[1] = &(rw_raw[per->n[1]]);
 	}
 
 	*d_ptr = rw;
@@ -779,9 +780,9 @@ static int perceptron_backpropagation_alloc_dw(perceptron per, double * ***dw_pt
 
 static int perceptron_backpropagation_free_rw(perceptron per, double * **d_ptr){
 	double ** rw = *d_ptr;
+
 	if( rw != NULL ){
-		free(rw[0]);
-		free(rw[1]);
+		free(*rw);
 		free(rw);
 	}
 
