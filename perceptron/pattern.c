@@ -50,7 +50,7 @@
 static int dir_select(const struct dirent * dire);
 static int png_select(const struct dirent * dire);
 
-/* 
+/*
  * Returns the code marked in a given pattern.
  * pattern: Initialized output pattern.
  * npsets: Pattern length
@@ -65,10 +65,10 @@ size_t pattern_to_code(double * pattern, size_t npsets, double min){
 	return pos;
 }
 
-/* Convert uchar raw image data to double pattern 
- * Convert each pixel in a double number 
+/* Convert uchar raw image data to double pattern
+ * Convert each pixel in a double number
  *
- * pattern: Uninitialized double pattern vector.
+ * pattern: Initialized double pattern vector.
  * upattern: Initialized raw image data.
  * size: Total size of upattern.
  * bpp: Bytes per pixel.
@@ -81,7 +81,7 @@ int pattern_create(pattern * pat, unsigned char * upattern, size_t size, size_t 
 
 	/* Check sizes */
 	if( size % bpp != 0 ) {
-		printerr("ERROR: Unaligned raw data and bpp.\n");
+		printerr("ERROR: Unaligned raw data and bpp (%ld and %ld).\n", size, bpp);
 		return FALSE;
 	}
 
@@ -131,7 +131,8 @@ static int patternset_init(patternset * pset_ptr, size_t npsets, size_t npats) {
 	pset->npsets = npsets;
 	pset->npats = npats;
 	pset->size = pset->w = pset->h = pset->bpp = 0;
-	pset->names = (char **) malloc (sizeof(char *) * npsets);
+
+	/* Alloc row pointers for each pattern */
 	pset->input = (double **) malloc (sizeof(double *) * npats);
 	pset->codes = (size_t *) malloc (sizeof(size_t) * npats);
 
@@ -139,6 +140,7 @@ static int patternset_init(patternset * pset_ptr, size_t npsets, size_t npats) {
 			|| pset->input == NULL
 			|| pset->codes == NULL )
 		return FALSE;
+	}
 
 	/* Set unused names to NULL */
 	for(; i < npsets; ++i) 
@@ -159,13 +161,13 @@ static int patternset_expand(patternset pset, size_t size){
 	return TRUE;
 }
 
-/* Sets needed info obtained in training phase in the test patternset 
+/* Sets needed info obtained in training phase in the test patternset
  * Basically copy the names for consulting the output net codes.
  *
  * @param training The trained patternset.
  * @param test Filled but not trained patternset.
  * @return 0 if something went wrong, 1 otherwise.
- */ 
+ */
 int patternset_set_traininginfo(patternset training, patternset test){
 	int i = 0;
 
@@ -198,13 +200,13 @@ int patternset_set_traininginfo(patternset training, patternset test){
 	return TRUE;
 }
 
-/* Sets needed info obtained in training phase in the test patternset 
+/* Sets needed info obtained in training phase in the test patternset
  * Basically copy the names for consulting the output net codes.
  *
  * @param path The path to the file where the names are.
  * @param test Filled but not trained patternset.
  * @return 0 if something went wrong, 1 otherwise.
- */ 
+ */
 int patternset_read_traininginfo(patternset test, const char * path) {
 	size_t i = 0, n = 0, l = 0, npsets = 0;
 	char * buf = NULL;
@@ -264,10 +266,10 @@ int patternset_read_traininginfo(patternset test, const char * path) {
  * name0
  * name1
  * ...
- */ 
+ */
 int patternset_print_traininginfo(patternset training, const char * path){
 	size_t i = 0;
-	FILE * stream = NULL; 
+	FILE * stream = NULL;
 
 	if( training->npsets == 0 )
 		return FALSE;
@@ -599,12 +601,12 @@ int patternset_free(patternset * p) {
 static int dir_select(const struct dirent * dire) {
 	/* Check wether if it is not a DIR.
 	 * Some FS doesn't handle d_type, so we check UNKNOWN as well */
-	if( dire->d_type != DT_UNKNOWN 
+	if( dire->d_type != DT_UNKNOWN
 			&& dire->d_type != DT_DIR )
 		return 0;
 
 	/* Discard . and .. */
-	if( strncmp(dire->d_name, ".", 2) == 0 
+	if( strncmp(dire->d_name, ".", 2) == 0
 		 || strncmp(dire->d_name, "..", 3) == 0 )
 		return 0;
 	
@@ -616,7 +618,7 @@ static int png_select(const struct dirent * dire){
 
 	/* Check wether if it is not a DIR.
 	 * Some FS doesn't handle d_type, so we check UNKNOWN as well */
-	if( dire->d_type != DT_UNKNOWN 
+	if( dire->d_type != DT_UNKNOWN
 			&& dire->d_type != DT_REG )
 		return 0;
 
@@ -625,7 +627,7 @@ static int png_select(const struct dirent * dire){
 		return 0;
 
 	/* Must end in '.png' */
-	if( strncmp(dire->d_name + len - 4, ".png", 4) != 0 ) 
+	if( strncmp(dire->d_name + len - 4, ".png", 4) != 0 )
 		return 0;
 
 	return 1;
