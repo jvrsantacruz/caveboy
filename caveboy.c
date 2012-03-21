@@ -124,7 +124,7 @@ int testing(perceptron per, patternset pset, double radio, char * weights_path, 
 			chosen = -1;
 			for(n = 0; n < pset->no; ++n){
 				if( per->net[2][n] > min ) {
-					chosen = n
+					chosen = n;
 					++matches;
 
 					/* 1 active neuron at most */
