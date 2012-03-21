@@ -763,17 +763,35 @@ static int perceptron_backpropagation_alloc_d(perceptron per, double * **d_ptr){
 
 static int perceptron_backpropagation_alloc_dw(perceptron per, double * ***dw_ptr){
 	/* Allocation for Weight corrections */
-	int i, j;
+	int i = 0, j = 0, size1, size2;
 	double *** dw = (double ***) malloc (2 * sizeof(double **));
+	double * d_raw = NULL;
 
-	if( dw != NULL ) {
-		dw[0] = (double **) malloc ((per->n[0] + 1) * sizeof(double*)); /* Input layer weights (+ bias) */
-		dw[1] = (double **) malloc ((per->n[1] + 1) * sizeof(double*)); /* Hidden layer weights (+ bias) */
+	if( dw == NULL )
+		return 0;
 
-		for(i = 0; i < 2; ++i)
-			for(j = 0; j < per->n[i] + 1; ++j)
-				dw[i][j] = (double *) calloc (per->n[i+1], sizeof(double)); 
+	dw[0] = (double **) malloc ((per->n[0] + 1) * sizeof(double*)); /* Input layer weights (+ bias) */
+	dw[1] = (double **) malloc ((per->n[1] + 1) * sizeof(double*)); /* Hidden layer weights (+ bias) */
+
+	/* Alloc contiguous memory and split it afterwards */
+	size1 = per->n[1] * (per->n[0] + 1);  /* First layer weights */
+	size2 = per->n[2] * (per->n[1] + 1);  /* Second layer weights */
+
+	d_raw = (double *) calloc (size1 + size2, sizeof(double));
+
+	if( d_raw == NULL ){
+		printerr("ERROR: Couldn't alloc space for weight deltas.\n");
+		free(dw[0]);
+		free(dw[1]);
+		free(dw);
+
+		return 1;
 	}
+
+	/* Associate layers */
+	for(i = 0; i < 2; ++i)
+		for(j = 0; j < per->n[i] + 1; ++j)
+			dw[i][j] = &(d_raw[ i * size1 + j * per->n[i+1] ]);
 
 	*dw_ptr = dw;
 
@@ -808,16 +826,11 @@ static int perceptron_backpropagation_free_d(perceptron per, double * **d_ptr){
 }
 
 static int perceptron_backpropagation_free_dw(perceptron per, double * ***dw_ptr){
-	int i, j;
 	double *** dw = *dw_ptr;
 
 	/* Free resources */
 	if( dw != NULL ) {
-		for(i = 0; i < 1 && dw[i] != NULL; ++i){
-			for(j = 0; j < per->n[i] + 1 && dw[i][j] != NULL; ++j)
-				free(dw[i][j]);
-			free(dw[i]);
-		}
+		free(*dw);  /* Free contiguous data */
 		free(dw);
 	}
 
