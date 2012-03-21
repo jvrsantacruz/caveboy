@@ -748,10 +748,12 @@ static int perceptron_backpropagation_alloc_rw(perceptron per, double * **d_ptr)
 static int perceptron_backpropagation_alloc_d(perceptron per, double * **d_ptr){
 	/* Allocation for Neuron deltas */
 	double ** d = (double **) malloc (3 * sizeof(double *));
+	double * d_raw = (double *) calloc (per->n[1] + per->n[2] * 2, sizeof(double));
+
 	if( d != NULL ) {
-		d[0] = (double *) calloc (per->n[1], sizeof(double)); /* Hidden layer neurons (no bias) */
-		d[1] = (double *) calloc (per->n[2], sizeof(double)); /* Output layer neurons */
-		d[2] = (double *) calloc (per->n[2], sizeof(double)); /* Difference between pattern and output */
+		d[0] = &(d_raw[0]); /* Hidden layer neurons (no bias) */
+		d[1] = &(d_raw[per->n[1]]); /* Output layer neurons (no bias) */
+		d[2] = &d_raw[per->n[1] + per->n[2]]; /* Difference between pattern and output */
 	}
 
 	*d_ptr = d;
@@ -792,13 +794,11 @@ static int perceptron_backpropagation_free_rw(perceptron per, double * **d_ptr){
 }
 
 static int perceptron_backpropagation_free_d(perceptron per, double * **d_ptr){
-	int i;
 	double ** d = *d_ptr;
 
 	/* Free resources */
 	if( d != NULL ) {
-		for(i = 0; i < 3 && d[i] != NULL; ++i)
-			free(d[i]);
+		free(*d);
 		free(d);
 	}
 
