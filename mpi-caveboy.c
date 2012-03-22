@@ -374,8 +374,8 @@ int main(int argc, char * argv[] ) {
 	int nin = 1, nh = 1, nout = 1,
 		max_epoch = 2000, fps = 10,
 		verbose = FALSE, errorflag = FALSE,
-		do_training = FALSE,
-		normalize = FALSE;
+		do_training = FALSE, normalize = FALSE,
+		mpi_rank = 0, mpi_size = 0, npats = 0;
 
 	char c = 0,
 		 * dir_path = NULL,
@@ -384,7 +384,8 @@ int main(int argc, char * argv[] ) {
 		 * traininginfo_path = "tinfo.dat";
 
 	perceptron per = NULL;
-	patternset pset = NULL;
+	patternset pset = NULL,  /* General patternset */
+			   wpset = NULL; /* Working patternset */
 
 	/* Check arguments */
 	if( argc > 20 ) {
@@ -398,7 +399,7 @@ int main(int argc, char * argv[] ) {
 		exit(EXIT_FAILURE);
 	}
 
-	/* Parse MPI arguments 
+	/* Parse MPI arguments
 	 * MPI should remove it's own arguments from argv */
 	MPI_Init(&argc, &argv);
 
@@ -424,7 +425,7 @@ int main(int argc, char * argv[] ) {
 			case 'v': verbose = 1; break;       /* Verbose */
 			case 'n': normalize = 1; break;     /* Previous data normalization */
 
-			default: printerr("WARNING: Unkown arg '-%c'\n", c); 
+			default: printerr("WARNING: Unkown arg '-%c'\n", c);
 					 errorflag = TRUE;
 					 break;
 		}
@@ -442,21 +443,37 @@ int main(int argc, char * argv[] ) {
 		exit(EXIT_FAILURE);
 	}
 
-	/* Read training patterns.
-	 * BEWARE IO operations and lots of memory being allocated here.  */
-	if( patternset_readpath(&pset, dir_path) == FALSE ) {
-		printerr("ERROR: Failed to load patternset: '%s'\n", dir_path);
-		clean_resources(&per, &pset);
-		exit(EXIT_FAILURE);
+	/* Get some info about MPI */
+	MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+	MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+
+	/* Root loads the samples and gets the perceptron size */
+	if( rank == 0 ){
+
+		/* Read patterns.
+		 * BEWARE IO operations and lots of memory being allocated here.  */
+		if( patternset_readpath(&pset, dir_path) == FALSE ) {
+			printerr("ERROR: Failed to load patternset: '%s'\n", dir_path);
+			clean_resources(&per, &pset);
+			exit(EXIT_FAILURE);
+		}
+
+		/* Set net sizes from patterns if not provided by user */
+		if( nin == 1)
+			nin = pset->ni;
+		if( nout == 1)
+			nout = pset->no;
+		if( nh == 1 )
+			nh = pset->no * 2;
 	}
 
-	/* Set net sizes from patterns if not provided by user */
-	if( nin == 1)
-		nin = pset->ni;
-	if( nout == 1)
-		nout = pset->no;
-	if( nh == 1 )
-		nh = pset->no * 2;
+	/* Receive perceptron sizes nin, nout, nh
+	 * If we're rank 0, broadcast sizes, if we're not, receive them. */
+	 broadcast_sizes(&nin, &nout, &nh, &npats, rank);
+
+	 /* Create an empty patternset with the right sizes but no memory */
+	if( rank != 0 )
+		patternset_create(&pset, npats, nin, nout);
 
 	/* Create perceptron */
 	if( perceptron_create(&per, nin, nh, nout) == 0 ) {
@@ -465,10 +482,16 @@ int main(int argc, char * argv[] ) {
 		exit(EXIT_FAILURE);
 	}
 
-	if( do_training )
+	/* Distribute patterns to all processors */
+	distribute_patterns(pset, &wpset, rank, size);
+
+	if( do_training ) {
+		/* Also distribute output codes when training, they're necessary */
+		distribute_codes(pset, wpset, rank, size);
 		training(per, pset, max_epoch, alpha, weights_path, traininginfo_path, errorlog_path);
-	else
-		testing(per, pset, radio, weights_path, traininginfo_path);
+	} else {
+		testing(per, pset, pset->npats, radio, weights_path, traininginfo_path);
+	}
 
 	clean_resources(&per, &pset);
 
