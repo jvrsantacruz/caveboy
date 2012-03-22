@@ -207,30 +207,50 @@ int distribute_codes(patternset pset, patternset newpset, int rank, int size) {
 	return TRUE;
 }
 
+/* Train the network in a parallelized manner
+ *
+ * All available patterns are split in different subsets and delivered within nodes.
+ * Each nodes computes only a subset of patterns and calculates deltas for those.
+ * Deltas are sent back to master and joined with current weights.
+ * New wegiths are sent to all nodes and a new epoch begins.
+ *
+ * 1. Distribute patterns and codes to each node.
+ * 2. For each epoch:
+ * 		1. Master broadcasts current neuron weights within nodes.
+ * 		2. All nodes compute next epoch for given patterns.
+ * 		3. All nodes returns computed deltas to master.
+ * 		4. Master applies deltas to current weights.
+ * 		5. [Future] Master calibrates workload per node
+ * 		      and adjusts pattern distribution.
+ */
 int training(perceptron per, patternset pset, int max_epoch, double alpha,
-		char * weights_path, char * tinfo_path, char * error_path){
+		char * weights_path, int rank, int size;
+		char * tinfo_path, char * error_path){
 	FILE * error_file = NULL;
 
-	/* Save obtained training info  */
-	patternset_print_traininginfo(pset, tinfo_path);
+	/* Save obtained training info. Basically, patternsets names */
+	if( rank == 0 )
+		patternset_print_traininginfo(pset, tinfo_path);
 
-	if( error_path != NULL )
-		if( (error_file = fopen(error_path, "w")) == NULL )
-			printerr("ERROR: Couldn't open file %s; error %s\n",
-					error_path, strerror(errno));
+	for(epoch = 0; epoch < max_epoch; ++epoch) {
 
-	/* Train and print epoch info to outfile */
-	perceptron_trainingprint(per, pset, alpha, 0, max_epoch, error_file);
+		/* Send root weights in each processor */
+		broadcast_weights(pset);
 
-	/* Save weights  */
-	perceptron_printpath(per, weights_path);
+		/* Compute backpropagation for each available pattern.
+		 * Do not update weights, get only deltas in per->dw */
+		for(pat = 0; pat < pset->npats; ++pat)
+			perceptron_backpropagation_raw(per, pset->input[pat], pset->codes[pat], alpha, 0);
 
-	/* Close errorlog file */
-	if( error_file != NULL )
-		if( fclose(error_file) == EOF ) {
-			printerr("ERROR: Couldn't close file %s; error %s\n",
-					error_path, strerror(errno));
-		}
+		/* Get deltas back from each processor and compute new weights */
+		compute_new_weights(per, rank) */
+
+		/* TODO: get performance stats and adjust pattern distribution */
+	}
+
+	/* Master saves current weights  */
+	if( rank == 0 )
+		perceptron_printpath(per, weights_path);
 
 	return TRUE;
 }

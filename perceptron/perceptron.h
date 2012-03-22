@@ -199,7 +199,7 @@ int perceptron_feedforward(perceptron per, pattern pat);
  * @param raw Raw vector of doubles.
  * @param sizes Vector of 3 sizes.
  */
-int set_cube_pointers(double *** cube, double * raw, int[3] sizes);
+int set_cube_pointers(double *** cube, double * raw, int * sizes);
 
 /**
  * Sets init function

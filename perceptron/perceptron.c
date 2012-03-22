@@ -86,7 +86,7 @@ static double perceptron_bipolarsigmoid_prima(double x){
  *
  * Memory is supposed to be contiguously allocated, so we can subscript it.
  * */
-int set_cube_pointers(double *** cube, double * raw, int[3] sizes){
+int set_cube_pointers(double *** cube, double * raw, int * sizes){
 	int i, j, dim1;
 
 	dim1 = (sizes[0] + 1) * sizes[1];
@@ -647,7 +647,7 @@ int perceptron_training(perceptron per, patternset pset, double lrate, double th
 
 		/* Calculate epoch */
 		for(i = 0; i < pset->npats; ++i) {
-			if( perceptron_backpropagation_raw(per, pset->input[i], pset->codes[i], lrate) == 0 ) {
+			if( perceptron_backpropagation_raw(per, pset->input[i], pset->codes[i], lrate, 1) == 0 ) {
 				printerr("perceptron_training: Error applying backpropagation at pattern:%i epoch:%i\n", i, epoch);
 				return 0;
 			}
