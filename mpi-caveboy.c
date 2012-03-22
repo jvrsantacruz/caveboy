@@ -175,6 +175,38 @@ int distribute_patterns(patternset pset, patternset * newpset, int rank, int siz
 	return TRUE;
 }
 
+/* Distributes codes within all processors.
+ * Follows the same scheme as distribute_patterns.
+ * To be used after distribute_patterns.
+ * newpset is supposed to be already initialized.
+ *
+ * @param pset Original initialized pset with right sizes (Data only on root).
+ * @param newpset Initialized patternset with distribute_patterns.
+ * @param rank Processor rank.
+ * @param size Comm size  */
+int distribute_codes(patternset pset, patternset newpset, int rank, int size) {
+	/* Each process receives an equal slice of codes.
+	 * Root gets the slice plus the spare codes. */
+	int partsize = pset->npats / size;
+	int rootsize = partsize + (pset->npats % size);
+	int i = 0;
+
+	/* Set how many doubles are to be sent/received */
+	scounts[0] = rootsize;
+	strides[0] = 0;
+
+	for(i = 1; i < sizes; ++i) {
+		scounts[i] = partsize;
+		strides[i] = rootsize + (i-1) * partsize;
+	}
+
+	/* Send patterns to each new perceptron on net */
+	MPI_Scatterv(pset->codes, scounts, strides, MPI_UNSIGNED_LONG,
+			newpset->codes, scounts[rank], MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+
+	return TRUE;
+}
+
 int training(perceptron per, patternset pset, int max_epoch, double alpha,
 		char * weights_path, char * tinfo_path, char * error_path){
 	FILE * error_file = NULL;
