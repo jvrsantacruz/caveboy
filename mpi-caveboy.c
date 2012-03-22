@@ -1,8 +1,7 @@
 /*
- *       Filename:  caveboy.c
- *    Description:  Video Sequence Analyzer
+ *       Filename:  mpi-caveboy.c
+ *    Description:  Video Sequence Analyzer MPI version
  *         Author:  Javier Santacruz (), <francisco.santacruz@estudiante.uam.es>
- *         Author:  Alberto Montes (), <alberto.montes@estudiante.uam.es>
  *
  *        Created:  20/02/12 16:55:39
  */
