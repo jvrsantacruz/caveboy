@@ -78,6 +78,16 @@ int broadcast_sizes(int * nin, int * nh, int * nout, int * npats, int rank) {
 	return TRUE;
 }
 
+/* Set weights from master to all other nodes */
+int broadcast_weights(perceptron per){
+
+	MPI_Bcast(&(per->w[0][0][0]), per->w_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+	set_cube_pointers(per->w, &(per->w[0][0][0]), per->n);
+
+	return TRUE;
+}
+
 int training(perceptron per, patternset pset, int max_epoch, double alpha,
 		char * weights_path, char * tinfo_path, char * error_path){
 	FILE * error_file = NULL;
