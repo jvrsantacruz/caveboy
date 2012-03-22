@@ -88,6 +88,35 @@ int broadcast_weights(perceptron per){
 	return TRUE;
 }
 
+
+/* Gets deltas from all processors and computes new weights */
+int compute_new_weights(perceptron per, int rank){
+
+	MPI_Reduce( MPI_IN_PLACE,              /* Use current root deltas */
+			        &(per->dw[0][0][0]),   /* Current deltas */
+			        per->w_size,            /* weights cube sizes */
+			        MPI_DOUBLE,
+			        MPI_SUM,
+			        0,
+			        MPI_COMM_WORLD);
+
+	/* Sum weights on root */
+	if( rank == 0 ){
+		size_t n = per->w_size;
+		double * w = &(per->w[0][0][0]);
+		double * dw = &(per->dw[0][0][0]);
+
+		while( n-- )
+			*(w + n) += *(dw + n);
+	}
+
+	/* Fix w and dw pointers */
+	set_cube_pointers(per->w, &(per->w[0][0][0]), per->n);
+	set_cube_pointers(per->dw, &(per->dw[0][0][0]), per->n);
+
+	return TRUE;
+}
+
 int training(perceptron per, patternset pset, int max_epoch, double alpha,
 		char * weights_path, char * tinfo_path, char * error_path){
 	FILE * error_file = NULL;
