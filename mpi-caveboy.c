@@ -117,6 +117,14 @@ int compute_new_weights(perceptron per, int rank){
 	return TRUE;
 }
 
+/* Get the result codes from all processors */
+int return_codes(int * codes, int n, int * allcodes, int nall){
+
+	MPI_Gather(codes, n, MPI_DOUBLE, allcodes, nall, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+	return TRUE;
+}
+
 int training(perceptron per, patternset pset, int max_epoch, double alpha,
 		char * weights_path, char * tinfo_path, char * error_path){
 	FILE * error_file = NULL;
