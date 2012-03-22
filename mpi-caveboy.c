@@ -125,6 +125,56 @@ int return_codes(int * codes, int n, int * allcodes, int nall){
 	return TRUE;
 }
 
+/* Splits patterns within all available nodes.
+ * Creates a new patternset to store the patterns.
+ *
+ * @param pset Original patternset with right sizes. (And data if root)
+ * @param newpset Uninitialized patternset by reference.
+ * @param rank Processor rank.
+ * @param size Comm size. */
+int distribute_patterns(patternset pset, patternset * newpset, int rank, int size) {
+
+	/* Each process receives an equal slice of patterns.
+	 * Root gets the slice plus the spare patterns. */
+	int i = 0;
+	int patsize  = pset->ni + 1;
+	int partsize = pset->npats / size;
+	int rootsize = partsize + (pset->npats % size);
+	int partsize_units = partsize * patsize;
+	int rootsize_units = rootsize * patsize;
+
+	/* How many doubles are to be read */
+	/* How far away is the next value */
+	int * scounts = (int *) malloc (size * sizeof(int));
+	int * strides = (int *) malloc (size * sizeof(int));
+
+	/* Create new patternset */
+	patternset_create(newpset,
+			rank == 0 ? rootsize : partsize,
+			patsize,
+			pset->npsets);
+	patternset_init(newpset);
+
+	/* Set how many doubles are to be sent/received */
+	scounts[0] = rootsize_units;
+	strides[0] = 0;
+
+	for(i = 1; i < sizes; ++i) {
+		scounts[i] = partsize_units;
+		strides[i] = rootsize_units + (i-1) * partsize_units;
+	}
+
+	/* Send patterns to each new perceptron on net */
+	MPI_Scatterv(pset->input_raw, scounts, strides, MPI_DOUBLE,
+			newpset->input_raw, scounts[rank], MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+	/* Adapt memory pointers on new perceptrons */
+	for(i = 0; i < scounts[rank]; ++i)
+		newpset->input[i] = &(newpset->input_raw[i * scounts[rank] ]);
+
+	return TRUE;
+}
+
 int training(perceptron per, patternset pset, int max_epoch, double alpha,
 		char * weights_path, char * tinfo_path, char * error_path){
 	FILE * error_file = NULL;
