@@ -255,10 +255,21 @@ int training(perceptron per, patternset pset, int max_epoch, double alpha,
 	return TRUE;
 }
 
-int testing(perceptron per, patternset pset, double radio, char * weights_path, char * tinfo_path){
+/* Exploiting network in a parallelized manner.
+ *
+ * The testing phase uses an already trained net
+ * to classificate new unknown presented datterns.
+ *
+ * 1. Distribute patterns withing nodes.
+ * 2. Pass all nodes through the net in each node and save the output.
+ * 3. Return obtained codes for each node.
+ * 4. Join all codes into a single result.
+ */
+int testing(perceptron per, patternset pset, int npatsall, double radio, char * weights_path, char * tinfo_path) {
 	size_t pat = 0, n = 0, matches = 0;
 	int chosen = 0;
 	int * codes = NULL;
+	int * allcodes = NULL;
 	double min = 1.0 - radio;
 
 	/* Testing phase uses an already trained net to try to clasificate
@@ -270,62 +281,79 @@ int testing(perceptron per, patternset pset, double radio, char * weights_path, 
 	 * 4. Calculate stats.
 	 */
 
-	/* Recuperate training patterns info. */
+	if( rank == 0 ){
+		/* Recuperate training patterns info. */
 		if( patternset_read_traininginfo(pset, tinfo_path) == FALSE)
 			return FALSE;
 
 		/* Recuperate trained net. Read weights. */
 		if( perceptron_readpath(&per, weights_path) == FALSE )
 			return FALSE;
+	}
 
-		if( pset->npats <= 0 )
-			return FALSE;
+	/* Distribute patterns within nodes for testing
+	 * We get a prepared pset with this
+	 * distribute_patterns_testing() */
 
-		/* Alloc space for all patterns output */
-		codes = (int *) malloc (sizeof(int) * pset->npats);
+	/* Broadcast trained net weights from master
+	 * broadcast_weights */
 
-		/* Use trained net per each input pattern
-		 * and put the output in a vector */
-		for(pat = 0; pat < pset->npats; ++pat){
-			perceptron_feedforward(per, pset->input[pat]);
+	if( pset->npats <= 0 )
+		return FALSE;
 
-			/* Find the most excited neuron
-			 *
-			 * Undecidible (not found, -1) if:
-			 * - Most excited neuron doesn't get close enough (> min)
-			 * - More than 1 neuron has been activated (matches > 1).
-			 */
-			matches = 0;
-			chosen = -1;
-			for(n = 0; n < pset->no; ++n){
-				if( per->net[2][n] > min ) {
-					chosen = n;
-					++matches;
+	codes = (int *) malloc (sizeof(int) * pset->npats);
 
-					/* 1 active neuron at most */
-					if( matches > 1 ) {
-						chosen = -1;
-						break;
-					}
+
+	/* Alloc extra codes for root, which has to deal with the result */
+	if( rank == 0 )
+		allcodes = (int *) malloc (npatsall * sizeof(int));
+
+	/* Use trained net per each input pattern
+	 * and put the output in a vector */
+	for(pat = 0; pat < pset->npats; ++pat){
+		perceptron_feedforward(per, pset->input[pat]);
+
+		/* Find the most excited neuron
+		 *
+		 * Undecidible (not found, -1) if:
+		 * - Most excited neuron doesn't get close enough (> min)
+		 * - More than 1 neuron has been activated (matches > 1).
+		 */
+		matches = 0;
+		chosen = -1;
+		for(n = 0; n < pset->no; ++n){
+			if( per->net[2][n] > min ) {
+				chosen = n;
+				++matches;
+
+				/* 1 active neuron at most */
+				if( matches > 1 ) {
+					chosen = -1;
+					break;
 				}
 			}
-
-			codes[pat] = chosen;
-
-			printf("Pattern %zd ", pat);
-			printf("Raw output layer:\n");
-			for(n = 0; n < pset->no; ++n)
-				printf("%f\t", per->net[2][n]);
-
-			printf("\nPattern %zd ", pat);
-			if( codes[pat] != -1 )
-				printf("recognized as %s (%d)\n",
-						pset->names[codes[pat]], codes[pat]);
-			else
-				printf("is undecidible\n");
 		}
 
-		return TRUE;
+		codes[pat] = chosen;
+	}
+
+	/* Send all codes and then join them */
+	 return_codes(codes, pset->npats, allcodes, npatsall);
+
+	 /* Print results */
+	 if( rank == 0 ){
+		 for(pat = 0; pat < npatsall; ++pat) {
+			 printf("Output for %i: %i\n", pat, allcodes[pat]);
+		 }
+	 }
+
+	 if( codes != NULL )
+		free(codes);
+
+	 if( allcodes != NULL )
+		free(allcodes);
+
+	return TRUE;
 }
 
 /* Cleans all program resources */
