@@ -54,6 +54,30 @@ const char * usage = "Usage: %s PATDIR [-irhoam N] [-wez FILE] [-vnt]\n"\
 					  "\t-t\tTraining [NO]\n"\
 					  "\t-v\tVerbose mode [NO]\n";
 
+/* Share perceptron parameters */
+int broadcast_sizes(int * nin, int * nh, int * nout, int * npats, int rank) {
+	int vals[4];
+
+	if( rank == 0 ){
+		vals[0] = *nin;
+		vals[1] = *nh;
+		vals[2] = *nout;
+		vals[3] = *npats;
+	}
+
+	MPI_Bcast(vals, 4, MPI_INT, 0, MPI_COMM_WORLD);
+
+	if( rank != 0 ) {
+		/* Receive and set perceptron sizes */
+		*nin  = vals[0];
+		*nh   = vals[1];
+		*nout = vals[2];
+		*npats = vals[3];
+	}
+
+	return TRUE;
+}
+
 int training(perceptron per, patternset pset, int max_epoch, double alpha,
 		char * weights_path, char * tinfo_path, char * error_path){
 	FILE * error_file = NULL;
