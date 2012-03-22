@@ -278,7 +278,6 @@ int patternset_print_traininginfo(patternset training, const char * path){
 	return TRUE;
 }
 
-<<<<<<< HEAD
 /* Searches for valid png files.
  * @param dir_path Full path to the root patterns directory.
  * @param npats Number of patterns, by reference. To be set by the function.

@@ -38,6 +38,9 @@ typedef double * pattern;
  * No memory is allocated. */
 int patternset_create(patternset * pset_ptr, int npats, int patsize, int npsets);
 
+/* Allocates previously created patternset
+ * No names are allocated inside. */
+int patternset_init(patternset * pset_ptr);
 
 /* Frees an allocated patternset */
 int patternset_free(patternset * pset_ptr); 
