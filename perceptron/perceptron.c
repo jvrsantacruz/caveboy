@@ -139,17 +139,20 @@ int perceptron_feedforward(perceptron per, pattern pat){
 }
 
 /**
+ * Full parametrized call to backpropagation
+ *
  * Computes backpropagation for a perceptron and a given pattern.
- * Raw version which perform the calculations and 
+ * Raw version which perform the calculations and
  *
  * @param per Initialized perceptron
  * @param pat Initialized pattern
  * @param code Active neuron in output pattern
- * @param lrate Learning rate 
+ * @param lrate Learning rate
+ * @param update Update weights (!=0) or not (0)
  * @return 0 if unsuccessful, 1 otherwise
  */
 int perceptron_backpropagation_raw(perceptron per, pattern pat, size_t code,
-		double lrate){
+		double lrate, int update){
 	int n = 0, i = 0, j = 0, k = 0, err = 1;
 	double Dj_in, Dj, sum;
 
@@ -158,7 +161,7 @@ int perceptron_backpropagation_raw(perceptron per, pattern pat, size_t code,
 		   ** rin = per->rw, /* Raw neuron inputs */
 		   *** dw = per->dw;  /* Weight Deltas */
 
-	/* Set input layer values 
+	/* Set input layer values
 	 * We just make net[0] to point to the pattern so we don't have to copy all
 	 * of it each time. */
 	per->net[0] = pat;
@@ -218,14 +221,17 @@ int perceptron_backpropagation_raw(perceptron per, pattern pat, size_t code,
 			dw[0][i][j] = lrate * Dj * per->net[0][i];
 	}
 
-	/* Update weights */
-	/* For the weighted layers */
-	for(i = 0; i < 2; ++i)
-		/* For each neuron (+ bias) */
-		for(j = 0; j < per->n[i] + 1; ++j)
-			/* To all neurons in the next layer */
-			for(k = 0; k < per->n[i + 1]; ++k)
-				per->w[i][j][k] += dw[i][j][k];
+	if( update ){
+
+		/* Update weights */
+		/* For the weighted layers */
+		for(i = 0; i < 2; ++i)
+			/* For each neuron (+ bias) */
+			for(j = 0; j < per->n[i] + 1; ++j)
+				/* To all neurons in the next layer */
+				for(k = 0; k < per->n[i + 1]; ++k)
+					per->w[i][j][k] += dw[i][j][k];
+	}
 
 	return err;
 }
@@ -249,7 +255,7 @@ int perceptron_backpropagation(perceptron per, pattern pat, size_t code, double 
 		ret = 0;
 		printerr("perceptron_backpropagation: Couldn't alloc space for deltas.\n");
 	} else {
-		ret = perceptron_backpropagation_raw(per, pat, code, lrate);
+		ret = perceptron_backpropagation_raw(per, pat, code, lrate, 1);
 	}
 
 	return ret;

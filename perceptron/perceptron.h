@@ -165,7 +165,23 @@ int perceptron_trainingprint(perceptron per, patternset pset, double lrate, doub
  */
 int perceptron_backpropagation(perceptron per, pattern pat, size_t code, double lrate);
 
-/** 
+
+/**
+ * Full parametrized call to backpropagation
+ *
+ * Computes backpropagation for a perceptron and a given pattern.
+ * Raw version which perform the calculations and
+ *
+ * @param per Initialized perceptron
+ * @param pat Initialized pattern
+ * @param code Active neuron in output pattern
+ * @param lrate Learning rate
+ * @param update Update weights (!=0) or not (0)
+ * @return 0 if unsuccessful, 1 otherwise
+ */
+int perceptron_backpropagation_raw(perceptron per, pattern pat, size_t code, double lrate, int update);
+
+/**
  * Computes forward feeding for perceptron given a pattern.
  *
  * @param per Initialized perceptron
