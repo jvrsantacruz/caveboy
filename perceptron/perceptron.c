@@ -82,6 +82,24 @@ static double perceptron_bipolarsigmoid_prima(double x){
 	return 0.5 * (1 + fx) * (1 - fx);
 }
 
+/* Set a cube from a set of pointers to its real contents in raw
+ *
+ * Memory is supposed to be contiguously allocated, so we can subscript it.
+ * */
+int set_cube_pointers(double *** cube, double * raw, int[3] sizes){
+	int i, j, dim1;
+
+	dim1 = (sizes[0] + 1) * sizes[1];
+
+	/* For the first two layers (i = {0, 1})
+	 * From all neurons in layer i + bias,
+	 * to all neurons in layer i+1 */
+	for(i = 0; i < 2; ++i)
+		for(j = 0; j < sizes[i] + 1; ++j)
+			cube[i][j] = &(raw[ i * dim1 + j * sizes[i + 1] ]);
+
+	return 1;
+}
 
 /** 
  * Computes forward feeding for perceptron given a pattern.

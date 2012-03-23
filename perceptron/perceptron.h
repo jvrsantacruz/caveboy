@@ -175,6 +175,15 @@ int perceptron_backpropagation(perceptron per, pattern pat, size_t code, double 
 int perceptron_feedforward(perceptron per, pattern pat);
 
 /**
+ * Fixes a cube of data from its raw data.
+ *
+ * @param cube Matrix of double pointers.
+ * @param raw Raw vector of doubles.
+ * @param sizes Vector of 3 sizes.
+ */
+int set_cube_pointers(double *** cube, double * raw, int[3] sizes);
+
+/**
  * Sets init function
  * @param fun Function to set.
  * @return old function
