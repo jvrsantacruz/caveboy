@@ -612,6 +612,8 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 			per->w[i][j] = &(raw[ (i * ni * (nh-1)) + (j * per->n[i+1]) ]);
 	}
 
+	per->wsize = (per->n[0] + 1) * per->n[1] + (per->n[1] + 1) * per->n[2];
+
 	/* Init delta temporal matrix and cube */
 	perceptron_backpropagation_alloc_d(per, &(per->d));
 	perceptron_backpropagation_alloc_dw(per, &(per->dw));

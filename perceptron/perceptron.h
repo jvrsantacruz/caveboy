@@ -44,6 +44,8 @@ typedef struct {
 	double ** rw;   /* neuron raw inputs */
 	double *** dw;  /* delta weights */
 
+	int wsize;  /* Total length of w */
+
 	double(*init)();              /* initialization function */
 	double(*trans)(double);       /* transition function */
 	double(*trans_prima)(double); /* prima transition function */
