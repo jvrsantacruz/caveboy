@@ -14,6 +14,7 @@ typedef struct {
 	char ** names;     /* Name for each patternset. name[code] */
 
 	double ** input;   /* All input patterns */
+	double * input_raw;   /* All input patterns in contiguous memory */
 	size_t * codes;    /* Code for each pattern. codes[npat] */
 } patternset_t;
 

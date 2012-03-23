@@ -50,7 +50,7 @@
 static int dir_select(const struct dirent * dire);
 static int png_select(const struct dirent * dire);
 
-/* 
+/*
  * Returns the code marked in a given pattern.
  * pattern: Initialized output pattern.
  * npsets: Pattern length
@@ -65,10 +65,10 @@ size_t pattern_to_code(double * pattern, size_t npsets, double min){
 	return pos;
 }
 
-/* Convert uchar raw image data to double pattern 
- * Convert each pixel in a double number 
+/* Convert uchar raw image data to double pattern
+ * Convert each pixel in a double number
  *
- * pattern: Uninitialized double pattern vector.
+ * pattern: Initialized double pattern vector.
  * upattern: Initialized raw image data.
  * size: Total size of upattern.
  * bpp: Bytes per pixel.
@@ -81,7 +81,7 @@ int pattern_create(pattern * pat, unsigned char * upattern, size_t size, size_t 
 
 	/* Check sizes */
 	if( size % bpp != 0 ) {
-		printerr("ERROR: Unaligned raw data and bpp.\n");
+		printerr("ERROR: Unaligned raw data and bpp (%ld and %ld).\n", size, bpp);
 		return FALSE;
 	}
 
@@ -96,13 +96,8 @@ int pattern_create(pattern * pat, unsigned char * upattern, size_t size, size_t 
 		return FALSE;
 	}
 
-	/* Alloc 1 extra 'hidden' double for the bias. 
-	 * To be used later in the perceptron so it will fit sizes */
-	*pat = (double *) malloc ((sizeof(double) * size/bpp) + 1);
-	if( *pat == NULL ){
-		printerr("ERROR: Out of memory\n");
+	if( *pat == NULL )
 		return FALSE;
-	}
 	
 	/* Set each bpp bytes together as a single
 	 * number and convert it to double */
@@ -120,8 +115,8 @@ int pattern_create(pattern * pat, unsigned char * upattern, size_t size, size_t 
 	return size/bpp;
 }
 
-static int patternset_init(patternset * pset_ptr, size_t npsets, size_t npats) {
-	patternset pset = (patternset) malloc (sizeof(patternset_t));
+static int patternset_init(patternset pset, size_t npsets,
+		size_t npats, size_t patsize) {
 	int i = 0;
 
 	if( pset == NULL )
@@ -131,41 +126,38 @@ static int patternset_init(patternset * pset_ptr, size_t npsets, size_t npats) {
 	pset->npsets = npsets;
 	pset->npats = npats;
 	pset->size = pset->w = pset->h = pset->bpp = 0;
-	pset->names = (char **) malloc (sizeof(char *) * npsets);
+
+	/* Alloc row pointers for each pattern */
 	pset->input = (double **) malloc (sizeof(double *) * npats);
-	pset->codes = (size_t *) malloc (sizeof(size_t) * npats);
 
-	if( pset->names == NULL 
-			|| pset->input == NULL
-			|| pset->codes == NULL )
+	/* Alloc contiguous input memory as a whole.
+	 * Add 1 to patsize to fit perceptron input lenght
+	 * which includes a bias fake value. */
+	patsize += 1;
+	pset->input_raw = (double *) malloc (npats * patsize * sizeof(double));
+	if( pset->input_raw == NULL ){
+		printerr("Couldn't alloc enogh memory for patterns.\n");
+		free(pset->input);
 		return FALSE;
+	}
 
-	/* Set unused names to NULL */
-	for(; i < npsets; ++i) 
-		pset->names[i] = NULL;
+	/* Associate each input row */
+	for(i = 0; i < npats; ++i)
+		pset->input[i] = &(pset->input_raw[i * patsize]);
 
-	*pset_ptr = pset;
-
-	return TRUE;
-}
-
-static int patternset_expand(patternset pset, size_t size){
-	pset->input = (double **) realloc (pset->input, size);
-	pset->codes = (size_t *) realloc (pset->codes, size);
-
-	if(pset->input == NULL || pset->codes == NULL )
+	if( pset->input == NULL || pset->input_raw == NULL )
 		return FALSE;
 
 	return TRUE;
 }
 
-/* Sets needed info obtained in training phase in the test patternset 
+/* Sets needed info obtained in training phase in the test patternset
  * Basically copy the names for consulting the output net codes.
  *
  * @param training The trained patternset.
  * @param test Filled but not trained patternset.
  * @return 0 if something went wrong, 1 otherwise.
- */ 
+ */
 int patternset_set_traininginfo(patternset training, patternset test){
 	int i = 0;
 
@@ -198,13 +190,13 @@ int patternset_set_traininginfo(patternset training, patternset test){
 	return TRUE;
 }
 
-/* Sets needed info obtained in training phase in the test patternset 
+/* Sets needed info obtained in training phase in the test patternset
  * Basically copy the names for consulting the output net codes.
  *
  * @param path The path to the file where the names are.
  * @param test Filled but not trained patternset.
  * @return 0 if something went wrong, 1 otherwise.
- */ 
+ */
 int patternset_read_traininginfo(patternset test, const char * path) {
 	size_t i = 0, n = 0, l = 0, npsets = 0;
 	char * buf = NULL;
@@ -264,10 +256,10 @@ int patternset_read_traininginfo(patternset test, const char * path) {
  * name0
  * name1
  * ...
- */ 
+ */
 int patternset_print_traininginfo(patternset training, const char * path){
 	size_t i = 0;
-	FILE * stream = NULL; 
+	FILE * stream = NULL;
 
 	if( training->npsets == 0 )
 		return FALSE;
@@ -286,19 +278,52 @@ int patternset_print_traininginfo(patternset training, const char * path){
 	return TRUE;
 }
 
-int patternset_readpath(patternset * pset_ptr, const char * dir_path) {
-	size_t ndirs = 0, npngs = 0, allocpats = 256, npats = 0, npsets = 0, 
-		   i = 0, j = 0, k = 0, readpngs = 0; 
-	int ret = 0, exit_error = FALSE;
+/* Searches for valid png files.
+ * @param dir_path Full path to the root patterns directory.
+ * @param npats Number of patterns, by reference. To be set by the function.
+ * @param npsets Number of patternsets, by reference. To be set by the function.
+ * @param w Image width, by reference. To be set by the function.
+ * @param h Image height, by reference. To be set by the function.
+ * @param b Image bpp, by reference. To be set by the function.
+ * @param png_paths Uninitialized list of strings by reference. To be freed by the user.
+ * @param png_codes Unitialized list of codes for each png by reference.
+ * @param pset_names Unitialized list of names for each code by reference.
+ *
+ * @return png_paths length. <= 0 on error */
+static size_t list_valid_pngs(const char * dir_path, size_t * npats, size_t * npsets,
+		size_t * w, size_t * h, size_t * b, char *** png_paths, size_t ** png_codes,
+		char *** pset_names) {
+	int ndirs = 0, listlen = 0, ndirvalidpngs = 0, ndirvalid = 0, ndirpngs = 0,
+		npngs = 0, d = 0, p = 0, ret = 0;
 	struct dirent ** dirs = NULL,
 				  ** files = NULL;
-	unsigned char * rawdata = NULL;
 	char full_dir_path[PATH_MAX],
-		 full_png_path[PATH_MAX]; 
-	png_t image; 
-	patternset pset = NULL;
+		 full_png_path[PATH_MAX];
+	png_t image;
 
-	/* 
+	/* Initialize pnglite */
+	png_init(NULL, NULL);
+
+	/* Initial values for external variables */
+	*npats = *npsets = 0;
+	*w = *h = *b = -1;
+
+	/* The png images are supposed to be
+	 * in a 2 layers structure like the following:
+	 *
+	 * dir
+	 *  |- pdir
+	 *  |   |- image1.png
+	 *  |   `- image2.png
+	 *  |- pdir
+	 *  (...)
+	 *
+	 * 1. Open dir and list pdirs
+	 * 2. Open each pdir and list the pngs
+	 * 3. Open each png and check if its valid
+	 *    (First opened png will provide the sizes)
+	 * 4. Save valid png full path
+     *
 	 * A patternset is a directory containing png images, which are the
 	 * actual patterns. We list the different directories in the given
 	 * path and list them one at time to get all the png images inside.
@@ -314,204 +339,207 @@ int patternset_readpath(patternset * pset_ptr, const char * dir_path) {
 	 * Read all png images and associate them with the npsets.
 	 *
 	 * Tables:
-	 * codes: Patternset code for each pattern. codes[pat] = pset
-	 * names: Patternset names. names[pset] = psetname
-	 * input: Double input pattern.
+	 * png_paths: Full paths to a valid png to be parsed. Length: npngs
+	 * codes: Patternset code for each pattern. codes[pat] = pset Length: npngs
+	 * names: Patternset names. names[pset] = psetname Length: nvaliddir
 	 */
 
 	/* Read top directory and get patternsets names */
 	if( (ndirs = scandir(dir_path, &dirs, dir_select, NULL)) < 0 ) {
 		printerr("ERROR: Couldn't open patternset directory at '%s'\n",
 				dir_path);
-		return TRUE;
-	} 
-
-	if( ndirs == 0 ) {
-		printerr("ERROR: No patternsets present in patternset directory at '%s'\n", 
-				dir_path);
-		exit_error = TRUE;
+		return 0;
 	}
 
-	if( !exit_error )
-		patternset_init(&pset, ndirs, allocpats);
+	/* Alloc space for dir names list */
+	(*pset_names) = (char **) malloc (ndirs * sizeof(char*));
+	for(d = 0; d < ndirs; ++d)
+		(*pset_names)[d] = NULL;
 
-	/* Initialize pnglite */
-	png_init(NULL, NULL);
+	/* Read all patternset dirs */
+	for(d = 0; d < ndirs; ++d){
+		ndirvalidpngs = 0;   /* valid pngs within this directory */
 
-	/* Open each directory and read all pngs, assigning them different codes */
-	npats = 0;
-	npsets = 0;
-	for(i = 0; !exit_error && i < ndirs; ++i) {
+		/* Get directory full path */
+		sprintf(full_dir_path, "%s/%s", dir_path, dirs[d]->d_name);
 
-		readpngs = 0;  /* n of successfully read pngs within this dir */
-		sprintf(full_dir_path, "%s/%s", dir_path, dirs[i]->d_name);
-
-		/* List root directory and check wether there is pngs inside. */
-		if( (npngs = scandir(full_dir_path, &files, png_select, NULL)) == -1 ) {
-			printerr("WARNING: Couldn't open patterns dir: '%s'\n", 
+		/* Read all pngs within the patternset dirs[d] */
+		if( (ndirpngs = scandir(full_dir_path, &files, png_select, NULL)) == -1 ) {
+			printerr("WARNING: Couldn't open patterns dir: '%s'\n",
 					full_dir_path);
 			continue;
 		}
 
-		if( npngs == 0 ) {
-			printerr("WARNING: Ignoring empty patterns dir: '%s'\n", 
-					full_dir_path);
+		if( ndirpngs == 0 ) {
+			printerr("WARNING: Emtpy patterns dir: '%s'\n", full_dir_path);
 			continue;
 		}
 
-		/* Once we have the png files list, load them.  
-		 * At first png load, store the sizes and ignore all following
-		 * images that doesn't match.
-		 *
-		 * We cannot know in advance the n of images we have to read, so
-		 * we dinamically alloc entries in blocks and check sizes after
-		 * every loaded image .
-		 */
-		for(j = 0; !exit_error && j < npngs; ++j) {
+		/* Expand png paths and codes list if neccesary */
+		if( npngs >= listlen ) {
+			listlen = npngs + ndirpngs;
 
-			/* Extra check for file name length */
-			if( strlen(files[j]->d_name) < 5 )
-				continue;
+			(*png_paths) = (char **) realloc (*png_paths,
+					sizeof(char *) * listlen);
+			if( *png_paths == NULL ) {
+				printerr("ERROR: Out of memory for png paths.\n");
+				return -1;
+			}
 
-			/* Obtain full subdirectory path */
-			sprintf(full_png_path, "%s/%s", full_dir_path, files[j]->d_name);
+			(*png_codes) = (size_t *) realloc (*png_codes, sizeof(size_t) * listlen);
+			if( *png_codes == NULL ){
+				printerr("ERROR: Out of memory for png codes.\n");
+				return -1;
+			}
+		}
 
-			/* Load png image */
-			if( (ret = png_open_file(&image, full_png_path)) != PNG_NO_ERROR) {
-				printerr("WARNING: Couldn't open PNG image: '%s': %s\n", 
+		/* Read pngs in directory */
+		for(p = 0; p < ndirpngs; ++p){
+
+			/* Get png file full path */
+			sprintf(full_png_path, "%s/%s", full_dir_path, files[p]->d_name);
+
+			/* Try to open image */
+			if( (ret = png_open_file(&image, full_png_path)) != PNG_NO_ERROR){
+				printerr("WARNING: Couldn't open PNG image: '%s': %s\n",
 						full_png_path, png_error_string(ret));
-				continue;
-			}
-
-			/* We get size info from the first loaded image.
-			 * Once we know the sizes, we can alloc space for patterns.
-			 * We must alloc for:
-			 * - rawdata: Temp memory for storing raw image data.
-			 * - pset->codes: Each pattern has a code.
-			 * - pset->input: Each pattern has a double vector as input.
-			 * - pset->names: Copy dir name when we successfully read a png.
-			 */
-			if( !pset->size ) {
-				pset->w = image.width;
-				pset->h = image.height;
-				pset->bpp = image.bpp;
-				pset->size = pset->w * pset->h * pset->bpp;
-
-				/* Temp buffer to store raw image data 
-				 * before converting it to double in the pattern */
-				rawdata = (unsigned char *) 
-					malloc (sizeof(unsigned char) * pset->size);
-
-				printf("INFO: First PNG loaded. "\
-						"Sizes: %ldx%ld (%ld Bpp) (pattern %ld KB) (raw %ld KB)\n",
-						pset->w, pset->h, pset->bpp, 
-						(sizeof(double) * pset->w * pset->h)/1024, pset->size/1024);
-			}
-
-			/* All png should be equally sized */
-			if( image.width != pset->w 
-				 || image.height != pset->h 
-				 || image.bpp != pset->bpp ) {
-				printerr("WARNING: Ignoring PNG file '%s'. It's %dx%d (%d Bpp)"\
-						" instead of %ldx%ld (%ld Bpp) as it should be.",
-						full_png_path, image.width, image.height,
-						image.bpp, pset->w, pset->h, pset->bpp);
-
-				png_close_file(&image);
-				continue;
-			}
-
-			/* Check table sizes and realloc if necessary */
-			if( allocpats == npats ) {
-				allocpats += 256;   /* 256 extra patterns */
-
-				if( patternset_expand(pset, allocpats) == FALSE ) {
-					printerr("ERROR: Out of memory\n");
-					exit_error = TRUE;
-					png_close_file(&image);
-					continue;
-				} 
-			}
-
-			/* Get png raw data, convert it to double and set it as
-			 * pattern input, associating it with the patternset
-			 * directory code */
-			if( (ret = png_get_data(&image, rawdata)) != PNG_NO_ERROR){
-				printerr("WARNING: Couldn't get data from '%s': %s. Ignoring file.\n", 
-						full_png_path, png_error_string(ret));
-				png_close_file(&image);
-				continue;
-			}
-
-			/* Convert raw data into pixel double values */
-			if( (ret = pattern_create(&(pset->input[npats]), 
-							rawdata, pset->size, pset->bpp)) == FALSE) {
-				printerr("ERROR: Couln't alloc pattern\n");
-				exit_error = TRUE;
-				png_close_file(&image);
 				continue;
 			}
 
 			png_close_file(&image);
 
-			/* Set patternset name-code if unset 
-			 * Associate the name with the pattern through the code */
-			if( pset->names[npsets] == NULL ) {
-				pset->names[npsets] = (char *) malloc (strlen(dirs[i]->d_name) + 1);
-				strcpy(pset->names[npsets], dirs[i]->d_name);
+			/* Get reference sizes if first time */
+			if( *w == -1 ){
+				*w = image.width;
+				*h = image.height;
+				*b = image.bpp;
+
+				printf("INFO: First PNG loaded. "\
+						"Sizes: %ldx%ld (%ld Bpp) (pattern %ld KB) (raw %ld KB)\n",
+						*w, *h, *b, (sizeof(double) * *w * *h)/1024, (*w * *h)/1024);
 			}
-			pset->codes[npats] = npsets;
 
 
-			++npats;     /* Next pattern id */
-			++readpngs;  /* Patternset valid patterns count */
+			/* Valid png image */
+			if( *w == image.width && *h == image.height && *b == image.bpp ){
 
-		}   /* PNG file j in dir i */
+				/* Copy full path to the png_paths list */
+				(*png_paths)[npngs] = (char *) malloc (strlen(full_png_path));
+				if( (*png_paths)[npngs] == NULL ){
+					printerr("ERROR: Out of memory for png pathname.\n");
+					return 0;
+				}
 
-		/* Next patternset (if it wasn't ignored) */
-		if( readpngs > 0 )
-			++npsets;
-		else 
-			printerr("WARNING: No files read from '%s' patternset directory.\n", 
-					full_dir_path);
+				strcpy((*png_paths)[npngs], full_png_path);
 
-		/* Free file list */
-		if( files != NULL ) {
-			for(k = 0; k < npngs; ++k)
-				free(files[k]);
-			free(files);
-			files = NULL;
+				/* Set code for dir */
+				(*png_codes)[npngs] = ndirvalid;
+
+				++ndirvalidpngs;
+				++npngs;
+
+
+				/* Incompatible image */
+			} else {
+				printerr("WARNING: Ignoring PNG file '%s'. It's %dx%d (%d Bpp)"\
+						" instead of %ldx%ld (%ld Bpp) as it should be.\n",
+						full_png_path, image.width, image.height,
+						image.bpp, *w, *h, *b);
+			}
+
 		}
+
+		if( ndirvalidpngs == 0 ) {
+			printerr("WARNING: No valid PNG file was read from '%s' dir.\n",
+					full_dir_path);
+		} else {
+			/* Another valid dir.  Copy its name */
+			(*pset_names)[ndirvalid] = (char *) malloc (strlen(dirs[d]->d_name));
+			strcpy((*pset_names)[ndirvalid], dirs[d]->d_name);
+			++ndirvalid;
+		}
+
 	}
 
-	exit_error = (npats == 0);
+	*npats = npngs;
+	*npsets = ndirvalid;
+
+	return npngs;
+}
+
+int patternset_readpath(patternset * pset_ptr, const char * dir_path) {
+	size_t npngs = 0, npats = 0, npsets = 0, i = 0, w, h, bpp;
+	int ret = 0;
+	unsigned char * rawdata = NULL;
+	char ** png_paths = NULL;
+	patternset pset = NULL;
+	png_t image;
+
+	/* Create patternset */
+	pset = (patternset) malloc (sizeof(patternset_t));
+
+	/* List all pngs to be read */
+	if( (npngs = list_valid_pngs(dir_path, &npats, &npsets, &w, &h, &bpp,
+					&png_paths, &pset->codes, &(pset->names))) <= 0 ) {
+		free(pset);
+		return TRUE;
+	}
+
+	/* Initialize patternset values */
+	patternset_init(pset, npsets, npats, w*h);
+	pset->w = w;
+	pset->h = h;
+	pset->bpp = bpp;
+	pset->size = w * h * bpp;
+
+	/* Temp buffer to store raw image data
+	 * before converting it to double in the pattern */
+	rawdata = (unsigned char *) malloc (sizeof(unsigned char) * pset->size);
+
+	/* Initialize pnglite */
+	png_init(NULL, NULL);
+
+	/* Open each valid image */
+	for(i = 0; i < npngs; ++i){
+		if( (ret = png_open_file(&image, png_paths[i])) != PNG_NO_ERROR) {
+			printerr("WARNING: Couldn't open PNG image: '%s': %s\n",
+					png_paths[i], png_error_string(ret));
+			continue;
+		}
+
+		/* Get png raw data, convert it to double and set it as
+		 * pattern input, associating it with the patternset
+		 * directory code */
+		if( (ret = png_get_data(&image, rawdata)) != PNG_NO_ERROR){
+			printerr("WARNING: Couldn't get data from '%s': %s. Ignoring file.\n",
+					png_paths[i], png_error_string(ret));
+		}
+
+		png_close_file(&image);
+	}
+
+	for(i = 0; i < npngs; ++i)
+		free(png_paths[i]);
+	free(png_paths);
+
 	printerr("Pattern loading finished. %zd patterns read from '%s'\n", npats, dir_path);
 
-	if( !exit_error ) {
+	if( npats > 0 ) {
 		/* Set patternset values */
 		pset->npats = npats;
 		pset->npsets = npsets;
 		pset->ni = pset->size / pset->bpp;
 		pset->no = npsets;
 		*pset_ptr = pset;
-	} 
-
-	/* Free file list */
-	if( dirs != NULL ) {
-		for(i = 0; i < ndirs; ++i)
-			if( dirs[i] != NULL )
-				free(dirs[i]);
-		free(dirs);
+	} else {
+		free(pset);
 	}
 
 	/* Free temporals */
-	if( rawdata != NULL ) 
+	if( rawdata != NULL )
 		free(rawdata);
 
-	if( exit_error )
-		patternset_free(&pset);
-
-	return !exit_error;
+	return npats;
 }
 
 int patternset_free(patternset * p) {
@@ -528,20 +556,21 @@ int patternset_free(patternset * p) {
 		return TRUE;
 
 	/* Free inputs */
-	if( pset->input != NULL ) {
-		for(i = 0; i < pset->npats; ++i)
-			if( pset->input[i] != NULL ) {
-				free(pset->input[i]);
-				pset->input[i] = NULL;
-			}
+	if(pset->input != NULL ) {
 		free(pset->input);
 		pset->input = NULL;
 	}
 
+	if(pset->input_raw != NULL ) {
+		free(pset->input_raw);
+		pset->input_raw = NULL;
+	}
+
 	/* Free codes */
-	if( pset->codes != NULL )
+	if( pset->codes != NULL ) {
 		free(pset->codes);
-	pset->codes = NULL;
+		pset->codes = NULL;
+	}
 
 	/* Free names */
 	if( pset->names != NULL ) {
@@ -563,12 +592,12 @@ int patternset_free(patternset * p) {
 static int dir_select(const struct dirent * dire) {
 	/* Check wether if it is not a DIR.
 	 * Some FS doesn't handle d_type, so we check UNKNOWN as well */
-	if( dire->d_type != DT_UNKNOWN 
+	if( dire->d_type != DT_UNKNOWN
 			&& dire->d_type != DT_DIR )
 		return 0;
 
 	/* Discard . and .. */
-	if( strncmp(dire->d_name, ".", 2) == 0 
+	if( strncmp(dire->d_name, ".", 2) == 0
 		 || strncmp(dire->d_name, "..", 3) == 0 )
 		return 0;
 	
@@ -580,7 +609,7 @@ static int png_select(const struct dirent * dire){
 
 	/* Check wether if it is not a DIR.
 	 * Some FS doesn't handle d_type, so we check UNKNOWN as well */
-	if( dire->d_type != DT_UNKNOWN 
+	if( dire->d_type != DT_UNKNOWN
 			&& dire->d_type != DT_REG )
 		return 0;
 
@@ -589,7 +618,7 @@ static int png_select(const struct dirent * dire){
 		return 0;
 
 	/* Must end in '.png' */
-	if( strncmp(dire->d_name + len - 4, ".png", 4) != 0 ) 
+	if( strncmp(dire->d_name + len - 4, ".png", 4) != 0 )
 		return 0;
 
 	return 1;

@@ -7,8 +7,6 @@
  *        Created:  20/02/12 16:55:39
  */
 
-/* #define _POSIX_C_SOURCE 1; *//* Activate the use of getopt */
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -46,7 +44,7 @@ const char * usage = "Usage: %s PATDIR [-irhoam N] [-wez FILE] [-vnt]\n"\
 					  "\t-a N\tLearning rate [0.001]\n"\
 					  "\t-m N\tMax epoch [2000]\n"\
 					  "\t-f N\tVideo fps [10]\n"\
-					  "\t-r N\tNeuron radio [0.3]\n"\
+					  "\t-r N\tNeuron radio [0.1]\n"\
 					  "\t-e FILE\tLog training ECM [error.dat]\n"\
 					  "\t-w FILE\tWeights file (wil be written if training) [weights.dat]\n"\
 					  "\t-z FILE\tSave/Read training info [tinfo.dat]\n"\
@@ -54,7 +52,7 @@ const char * usage = "Usage: %s PATDIR [-irhoam N] [-wez FILE] [-vnt]\n"\
 					  "\t-t\tTraining [NO]\n"\
 					  "\t-v\tVerbose mode [NO]\n";
 
-int training(perceptron per, patternset pset, int max_epoch, double alpha, 
+int training(perceptron per, patternset pset, int max_epoch, double alpha,
 		char * weights_path, char * tinfo_path, char * error_path){
 	FILE * error_file = NULL;
 
@@ -63,7 +61,7 @@ int training(perceptron per, patternset pset, int max_epoch, double alpha,
 
 	if( error_path != NULL )
 		if( (error_file = fopen(error_path, "w")) == NULL )
-			printerr("ERROR: Couldn't open file %s; error %s\n", 
+			printerr("ERROR: Couldn't open file %s; error %s\n",
 					error_path, strerror(errno));
 
 	/* Train and print epoch info to outfile */
@@ -75,7 +73,7 @@ int training(perceptron per, patternset pset, int max_epoch, double alpha,
 	/* Close errorlog file */
 	if( error_file != NULL )
 		if( fclose(error_file) == EOF ) {
-			printerr("ERROR: Couldn't close file %s; error %s\n", 
+			printerr("ERROR: Couldn't close file %s; error %s\n",
 					error_path, strerror(errno));
 		}
 
@@ -83,10 +81,10 @@ int training(perceptron per, patternset pset, int max_epoch, double alpha,
 }
 
 int testing(perceptron per, patternset pset, double radio, char * weights_path, char * tinfo_path){
-	size_t pat = 0, n = 0, matchs = 0;
+	size_t pat = 0, n = 0, matches = 0;
 	int chosen = 0;
 	int * codes = NULL;
-	double max = 0;
+	double min = 1.0 - radio;
 
 	/* Testing phase uses an already trained net to try to clasificate
 	 * new unknown patterns.
@@ -111,47 +109,42 @@ int testing(perceptron per, patternset pset, double radio, char * weights_path, 
 		/* Alloc space for all patterns output */
 		codes = (int *) malloc (sizeof(int) * pset->npats);
 
-		/* Use trained net per each input pattern 
+		/* Use trained net per each input pattern
 		 * and put the output in a vector */
 		for(pat = 0; pat < pset->npats; ++pat){
 			perceptron_feedforward(per, pset->input[pat]);
 
-			/* Find the most excited neuron 
+			/* Find the most excited neuron
 			 *
-			 * Undecidible (not found, -1) if the most excited neuron
-			 * doesn't get close enough (radio) to full activation (1)
-			 *
-			 * Undecidible classification if more than 1 neuron 
-			 * has been activated (matchs > 1).
+			 * Undecidible (not found, -1) if:
+			 * - Most excited neuron doesn't get close enough (> min)
+			 * - More than 1 neuron has been activated (matches > 1).
 			 */
-			max = 1.0 - radio;
+			matches = 0;
 			chosen = -1;
 			for(n = 0; n < pset->no; ++n){
-				if( per->net[2][n] > max ) {
-					max = per->net[2][n];
+				if( per->net[2][n] > min ) {
 					chosen = n;
+					++matches;
 
-					/* Only 1 active neuron */
-					if( ++matchs > 1 ) {
+					/* 1 active neuron at most */
+					if( matches > 1 ) {
 						chosen = -1;
 						break;
 					}
 				}
 			}
 
-			printf("\nRaw output\n");
-			for(n = 0; n < pset->no; ++n){
-				printf("%f\t", per->net[2][n]);
-			}
-
 			codes[pat] = chosen;
-		}
 
-		/* Output to stdout to check */
-		for(pat = 0; pat < pset->npats; ++pat){
 			printf("Pattern %zd ", pat);
+			printf("Raw output layer:\n");
+			for(n = 0; n < pset->no; ++n)
+				printf("%f\t", per->net[2][n]);
+
+			printf("\nPattern %zd ", pat);
 			if( codes[pat] != -1 )
-				printf("recognized as %s (%d)\n", 
+				printf("recognized as %s (%d)\n",
 						pset->names[codes[pat]], codes[pat]);
 			else
 				printf("is undecidible\n");
@@ -162,16 +155,16 @@ int testing(perceptron per, patternset pset, double radio, char * weights_path, 
 
 int main(int argc, char * argv[] ) {
 	double alpha = 0.001,
-		    radio = 0.03;
+		    radio = 0.1;
 
-	int nin = 1, nh = 1, nout = 1, 
+	int nin = 1, nh = 1, nout = 1,
 		max_epoch = 2000, fps = 10,
 		verbose = FALSE,
-		do_training = FALSE, 
+		do_training = FALSE,
 		normalize = FALSE;
 
 	char c = 0,
-		 * dir_path = NULL, 
+		 * dir_path = NULL,
 		 * errorlog_path = "error.dat",
 		 * weights_path = "weights.dat",
 		 * traininginfo_path = "tinfo.dat";
@@ -223,7 +216,7 @@ int main(int argc, char * argv[] ) {
 		exit(EXIT_FAILURE);
 	}
 
-	/* Read training patterns. 
+	/* Read training patterns.
 	 * BEWARE IO operations and lots of memory being allocated here.  */
 	if( patternset_readpath(&pset, dir_path) == FALSE ) {
 		printerr("ERROR: Failed to load patternset: '%s'\n", dir_path);
@@ -249,7 +242,7 @@ int main(int argc, char * argv[] ) {
 
 	if( do_training )
 		training(per, pset, max_epoch, alpha, weights_path, traininginfo_path, errorlog_path);
-	else 
+	else
 		testing(per, pset, radio, weights_path, traininginfo_path);
 
 	patternset_free(&pset);
