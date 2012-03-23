@@ -27,7 +27,7 @@ typedef double * pattern;
  #define ISACTIVE(i, code) ((i == code) ? 1.0 : -1.0)
 #endif
 
-/* 
+/*
  * Reads image patterns from dir path
  * @param pset_ptr Uninitialized patternset by reference.
  * @param dir_path Path to the root patternsets directory.
@@ -43,10 +43,10 @@ int patternset_create(patternset * pset_ptr, int npats, int patsize, int npsets)
 int patternset_init(patternset * pset_ptr);
 
 /* Frees an allocated patternset */
-int patternset_free(patternset * pset_ptr); 
+int patternset_free(patternset * pset_ptr);
 
-/* Convert uchar raw image data to double pattern 
- * Convert each pixel in a double number 
+/* Convert uchar raw image data to double pattern
+ * Convert each pixel in a double number
  *
  * @param pattern Uninitialized double pattern vector.
  * @param upattern Initialized raw image data.
@@ -54,9 +54,9 @@ int patternset_free(patternset * pset_ptr);
  * @param bpp Bytes per pixel.
  * @return the final size of pattern double vector.
  */
-int pattern_create(pattern * pat, unsigned char * upattern, size_t size, size_t bpp); 
+int pattern_create(pattern * pat, unsigned char * upattern, size_t size, size_t bpp);
 
-/* 
+/*
  * Returns the code marked in a given pattern.
  * @param pattern Initialized output pattern.
  * @param npsets Pattern length
@@ -64,22 +64,22 @@ int pattern_create(pattern * pat, unsigned char * upattern, size_t size, size_t 
  */
 size_t pattern_to_code(double * pattern, size_t npsets, double min);
 
-/* Sets needed info obtained in training phase in the test patternset 
+/* Sets needed info obtained in training phase in the test patternset
  * Basically copy the names for consulting the output net codes.
  *
  * @param training The trained patternset.
  * @param test Filled but not trained patternset.
  * @return 0 if something went wrong, 1 otherwise.
- */ 
+ */
 int patternset_set_traininginfo(patternset training, patternset test);
 
-/* Sets needed info obtained in training phase in the test patternset 
+/* Sets needed info obtained in training phase in the test patternset
  * Basically copy the names for consulting the output net codes.
  *
  * @param path The path to the file where the names are.
  * @param test Filled but not trained patternset.
  * @return 0 if something went wrong, 1 otherwise.
- */ 
+ */
 int patternset_read_traininginfo(patternset test, const char * path);
 
 /* Dumps the patternset training info to a file.
@@ -93,5 +93,5 @@ int patternset_read_traininginfo(patternset test, const char * path);
  * name0
  * name1
  * ...
- */ 
+ */
 int patternset_print_traininginfo(patternset training, const char * path);

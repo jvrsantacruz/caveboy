@@ -36,7 +36,7 @@
 
 static double perceptron_mean_square_error(double * actual, size_t code, int n){
 	int i = 0;
-	double dif,sum; 
+	double dif,sum;
 	dif = sum = 0.0;
 
 	if( n == 0 ){
@@ -52,7 +52,7 @@ static double perceptron_mean_square_error(double * actual, size_t code, int n){
 	return 0.5 * (sum / n);
 }
 
-/** 
+/**
  * Perceptron default weight initializer.
  *
  * @return Random double value in the interval [-1,1]
@@ -101,7 +101,7 @@ int set_cube_pointers(double *** cube, double * raw, int * sizes){
 	return 1;
 }
 
-/** 
+/**
  * Computes forward feeding for perceptron given a pattern.
  *
  * @param per Initialized perceptron
@@ -204,7 +204,7 @@ int perceptron_backpropagation_raw(perceptron per, pattern pat, size_t code,
 
 	/* Calculate hidden layer (i = 1) backpropagation */
 	for(j = 0; j < per->n[1]; ++j){
-		/* Get the already computed Zj_in */ 
+		/* Get the already computed Zj_in */
 		/* Zj_in = perceptron_weighted_sum(per->net[0], per->w[0], j, per->n[0] + 1); */
 		/* Zj_in = rin[0][j]; */
 
@@ -242,7 +242,7 @@ int perceptron_backpropagation_raw(perceptron per, pattern pat, size_t code,
  * @param per Initialized perceptron
  * @param pat Initialized pattern
  * @param code Output pattern
- * @param lrate Learning rate 
+ * @param lrate Learning rate
  * @return 0 if unsuccessful, 1 otherwise
  */
 int perceptron_backpropagation(perceptron per, pattern pat, size_t code, double lrate){
@@ -291,7 +291,7 @@ int perceptron_read(perceptron * per_ptr, FILE * perfile){
 	}
 
 	if( i <= 0 || j <= 0 || k <= 0 ) {
-		printerr("perceptron_read: Incorrect header values input: %i, hidden: %i, output: %i\n", 
+		printerr("perceptron_read: Incorrect header values input: %i, hidden: %i, output: %i\n",
 				i, j, k);
 		return 0;
 	}
@@ -325,7 +325,7 @@ int perceptron_read(perceptron * per_ptr, FILE * perfile){
 	return 1;
 }
 
-/** 
+/**
  * Reads perceptron weights and structure from file.
  *
  * @param per Uninitialized perceptron by reference.
@@ -372,7 +372,7 @@ int perceptron_readpath(perceptron * per_ptr, const char * perfile_path) {
 int perceptron_print(perceptron per, FILE * perfile){
 	int i, j, k;
 
-	fprintf(perfile, "%i %i %i\n", 
+	fprintf(perfile, "%i %i %i\n",
 			per->n[0], per->n[1], per->n[2]);
 
 	/*  Weights for input and hidden layer */
@@ -440,7 +440,7 @@ int perceptron_reset(perceptron per){
 		/* For all neuron + bias (if any) */
 		for(j = 0; j < n; ++j)
 			/* Set all to rand, bias (at last pos + 1) to 1 */
-			per->net[i][j] = (j == per->n[i] + 1) ? 1 : (*(per->init))();  
+			per->net[i][j] = (j == per->n[i] + 1) ? 1 : (*(per->init))();
 	}
 
 	/*  Reset weights */
@@ -456,7 +456,7 @@ int perceptron_reset(perceptron per){
 	return 1;
 }
 
-/** 
+/**
  * Sets a given pattern as input.
  *
  * @param per Initialized perceptron.
@@ -529,7 +529,7 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 	int ni, nh, no;
 	int i, j;
 	double * raw = NULL;
-	perceptron per = NULL; 
+	perceptron per = NULL;
 
 	if((per = (perceptron) malloc (sizeof(perceptron_t))) == NULL)
 		return 1;
@@ -576,7 +576,7 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 		return 0;
 	}
 
-	/*  Bias value its always 1. 
+	/*  Bias value its always 1.
 	 *  Will be set at last position in both layers by convention */
 	per->net[0][ni-1] = 1;
 	per->net[1][nh-1] = 1;
@@ -628,7 +628,7 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
  *
  * @param per Initialized perceptron
  * @param pset Initialized patternset
- * @param lrate Learning rate 
+ * @param lrate Learning rate
  * @param thres Error threshold. Iteration stop condition.
  * @return 0 if unsuccessful, 1 otherwise
  */
@@ -666,7 +666,7 @@ int perceptron_training(perceptron per, patternset pset, double lrate, double th
  *
  * @param per Initialized perceptron
  * @param pset Initialized patternset
- * @param lrate Learning rate 
+ * @param lrate Learning rate
  * @param thres Error threshold. Iteration stop condition.
  * @param stream Output stream
  * @return 0 if unsuccessful, 1 otherwise
