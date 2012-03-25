@@ -35,14 +35,14 @@ slice_videos: ${VIDEOS}
 	./${TRANSFORMER} ${VIDEOS_DIR} ${FRAMES_DIR} 128x64 3
 	@echo Done slicing
 
-analyze: caveboy
-	@echo Analyzing...
-	@echo Starting training...
+testing: caveboy
+	@echo Starting Testing...
+	./${EXE} ${FRAMES_DIR} -w weights.dat -e error.dat
+
+training: caveboy
+	@echo Starting Training...
 	./${EXE} ${FRAMES_DIR} -w weights.dat -e error.dat -m 20 -t
 	@echo Done training.
-	@echo Starting testing...
-	./${EXE} ${FRAMES_DIR} -w weights.dat -e error.dat -m 20
-	@echo Done testing.
 
 clean:
 	@echo Cleaning caveboy objects
