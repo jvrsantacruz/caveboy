@@ -201,13 +201,16 @@ int perceptron_backpropagation_raw(perceptron per, pattern pat, size_t code,
 	}
 
 	/* Update weights */
-	/* For the weighted layers */
+	for(i = 0; i < per->w_size; ++i)
+		per->w_raw[i] += per->dw_raw[i];
+
+	/* For the weighted layers
 	for(i = 0; i < 2; ++i)
-		/* For each neuron (+ bias) */
+		* For each neuron (+ bias) *
 		for(j = 0; j < per->n[i] + 1; ++j)
-			/* To all neurons in the next layer */
+			* To all neurons in the next layer *
 			for(k = 0; k < per->n[i + 1]; ++k)
-				per->w[i][j][k] += dw[i][j][k];
+				per->w[i][j][k] += dw[i][j][k]; */
 
 	return err;
 }
@@ -785,11 +788,11 @@ static int perceptron_backpropagation_alloc_d(perceptron per, double * **d_ptr){
 	return d != NULL;
 }
 
-static int perceptron_backpropagation_alloc_dw(perceptron per, double * ***dw_ptr){
+static int perceptron_backpropagation_alloc_dw(perceptron per, double * ***dw_ptr, double ** dw_raw_ptr){
 	/* Allocation for Weight corrections */
 	int i = 0, j = 0, size1, size2;
 	double *** dw = (double ***) malloc (2 * sizeof(double **));
-	double * d_raw = NULL;
+	double * dw_raw = NULL;
 
 	if( dw == NULL )
 		return 0;
@@ -801,9 +804,9 @@ static int perceptron_backpropagation_alloc_dw(perceptron per, double * ***dw_pt
 	size1 = per->n[1] * (per->n[0] + 1);  /* First layer weights */
 	size2 = per->n[2] * (per->n[1] + 1);  /* Second layer weights */
 
-	d_raw = (double *) calloc (size1 + size2, sizeof(double));
+	dw_raw = (double *) calloc (size1 + size2, sizeof(double));
 
-	if( d_raw == NULL ){
+	if( dw_raw == NULL ){
 		printerr("ERROR: Couldn't alloc space for weight deltas.\n");
 		free(dw[0]);
 		free(dw[1]);
@@ -815,9 +818,10 @@ static int perceptron_backpropagation_alloc_dw(perceptron per, double * ***dw_pt
 	/* Associate layers */
 	for(i = 0; i < 2; ++i)
 		for(j = 0; j < per->n[i] + 1; ++j)
-			dw[i][j] = &(d_raw[ i * size1 + j * per->n[i+1] ]);
+			dw[i][j] = &(dw_raw[ i * size1 + j * per->n[i+1] ]);
 
 	*dw_ptr = dw;
+	*dw_raw_ptr = dw_raw;
 
 	return dw != NULL;
 }
