@@ -9,6 +9,9 @@
  *   A patternset holds a list of patterns with its associated output.
  */
 
+#ifndef __PERCEPTRON_PATTERN__
+#define __PERCEPTRON_PATTERN__
+
 typedef struct {
 	size_t npats, npsets, w, h, bpp, size, ni, no;
 	char ** names;     /* Name for each patternset. name[code] */
@@ -95,3 +98,5 @@ int patternset_read_traininginfo(patternset test, const char * path);
  * ...
  */
 int patternset_print_traininginfo(patternset training, const char * path);
+
+#endif

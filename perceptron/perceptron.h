@@ -5,6 +5,9 @@
  *
  */
 
+#ifndef __PERCEPTRON_PERCEPTRON__
+#define __PERCEPTRON_PERCEPTRON__
+
 #include <stdio.h>
 
 #include "pattern.h"
@@ -228,3 +231,5 @@ perceptron_fun_trans perceptron_setfunc_trans(perceptron per, double(*fun)(doubl
  * @return old function
  */
 perceptron_fun_trans perceptron_setfunc_trans_prima(perceptron per, double(*fun)(double));
+
+#endif
