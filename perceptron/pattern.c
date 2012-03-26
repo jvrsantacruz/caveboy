@@ -304,10 +304,11 @@ static size_t list_valid_pngs(const char * dir_path, size_t * npats, size_t * np
 				  ** files = NULL;
 	char full_dir_path[PATH_MAX],
 		 full_png_path[PATH_MAX];
-	png_t image;
 
 	/* Initialize pnglite */
 	png_init(NULL, NULL);
+
+	*png_paths = NULL;
 
 	/* Initial values for external variables */
 	*npats = *npsets = 0;
@@ -400,6 +401,7 @@ static size_t list_valid_pngs(const char * dir_path, size_t * npats, size_t * np
 
 		/* Read pngs in directory */
 		for(p = 0; p < ndirpngs; ++p){
+			png_t image;
 
 			/* Get png file full path */
 			sprintf(full_png_path, "%s/%s", full_dir_path, files[p]->d_name);
@@ -429,13 +431,15 @@ static size_t list_valid_pngs(const char * dir_path, size_t * npats, size_t * np
 			if( *w == image.width && *h == image.height && *b == image.bpp ){
 
 				/* Copy full path to the png_paths list */
-				(*png_paths)[npngs] = (char *) malloc (strlen(full_png_path));
+				ret = strlen(full_png_path);
+				(*png_paths)[npngs] = (char *) malloc (ret + 1);
 				if( (*png_paths)[npngs] == NULL ){
 					printerr("ERROR: Out of memory for png pathname.\n");
 					return 0;
 				}
 
-				strcpy((*png_paths)[npngs], full_png_path);
+				strncpy((*png_paths)[npngs], full_png_path, ret);
+				(*png_paths)[npngs][ret] = '\0';
 
 				/* Set code for dir */
 				(*png_codes)[npngs] = ndirvalid;
@@ -459,7 +463,7 @@ static size_t list_valid_pngs(const char * dir_path, size_t * npats, size_t * np
 					full_dir_path);
 		} else {
 			/* Another valid dir.  Copy its name */
-			(*pset_names)[ndirvalid] = (char *) malloc (strlen(dirs[d]->d_name));
+			(*pset_names)[ndirvalid] = (char *) malloc (strlen(dirs[d]->d_name) + 1);
 			strcpy((*pset_names)[ndirvalid], dirs[d]->d_name);
 			++ndirvalid;
 		}
