@@ -129,8 +129,6 @@ static int patternset_init(patternset pset, size_t npsets,
 
 	pset->input = NULL;
 	pset->input_raw = NULL;
-	pset->codes = NULL;
-	pset->names = NULL;
 
 	/* Alloc row pointers for each pattern */
 	pset->input = (double **) malloc (sizeof(double *) * npats);
