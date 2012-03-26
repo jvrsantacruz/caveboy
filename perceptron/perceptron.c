@@ -455,11 +455,9 @@ int perceptron_setpattern(perceptron per, pattern pat){
 }
 
 /* Forward declaration */
-static int perceptron_backpropagation_free_dw(perceptron per, double * ***dw_ptr);
-static int perceptron_backpropagation_free_rw(perceptron per, double * **dw_ptr);
-static int perceptron_backpropagation_free_d(perceptron per, double * **d_ptr);
 static int perceptron_backpropagation_alloc_rw(perceptron per, double * **dw_ptr);
-static int perceptron_backpropagation_alloc_dw(perceptron per, double * ***dw_ptr);
+static int perceptron_backpropagation_alloc_dw(perceptron per, double * ***dw_ptr,
+		double ** dw_raw_ptr);
 static int perceptron_backpropagation_alloc_d(perceptron per, double * **d_ptr);
 
 /**
@@ -824,45 +822,4 @@ static int perceptron_backpropagation_alloc_dw(perceptron per, double * ***dw_pt
 	*dw_raw_ptr = dw_raw;
 
 	return dw != NULL;
-}
-
-static int perceptron_backpropagation_free_rw(perceptron per, double * **d_ptr){
-	double ** rw = *d_ptr;
-
-	if( rw != NULL ){
-		free(*rw);
-		free(rw);
-	}
-
-	*d_ptr = NULL;
-
-	return 1;
-}
-
-static int perceptron_backpropagation_free_d(perceptron per, double * **d_ptr){
-	double ** d = *d_ptr;
-
-	/* Free resources */
-	if( d != NULL ) {
-		free(*d);
-		free(d);
-	}
-
-	*d_ptr = NULL;
-
-	return 1;
-}
-
-static int perceptron_backpropagation_free_dw(perceptron per, double * ***dw_ptr){
-	double *** dw = *dw_ptr;
-
-	/* Free resources */
-	if( dw != NULL ) {
-		free(*dw);  /* Free contiguous data */
-		free(dw);
-	}
-
-	*dw_ptr = NULL;
-
-	return 1;
 }
