@@ -14,6 +14,7 @@
 #include <math.h>
 #include <errno.h>
 #include <getopt.h>
+#include <time.h>
 
 #include "perceptron.h"	
 
@@ -177,6 +178,8 @@ int main(int argc, char * argv[] ) {
 
 	perceptron per = NULL;
 	patternset pset = NULL;
+
+	srand(time(NULL));
 
 	/* Check arguments */
 	if( argc > 20 ) {
