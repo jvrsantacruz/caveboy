@@ -127,6 +127,11 @@ static int patternset_init(patternset pset, size_t npsets,
 	pset->npats = npats;
 	pset->size = pset->w = pset->h = pset->bpp = 0;
 
+	pset->input = NULL;
+	pset->input_raw = NULL;
+	pset->codes = NULL;
+	pset->names = NULL;
+
 	/* Alloc row pointers for each pattern */
 	pset->input = (double **) malloc (sizeof(double *) * npats);
 
@@ -141,12 +146,14 @@ static int patternset_init(patternset pset, size_t npsets,
 		return FALSE;
 	}
 
-	/* Associate each input row */
-	for(i = 0; i < npats; ++i)
-		pset->input[i] = &(pset->input_raw[i * patsize]);
-
 	if( pset->input == NULL || pset->input_raw == NULL )
 		return FALSE;
+
+	/* Associate each input row. And set bias to 1 */
+	for(i = 0; i < npats; ++i) {
+		pset->input[i] = &(pset->input_raw[i * patsize]);
+		pset->input[i][patsize - 1] = 1;
+	}
 
 	return TRUE;
 }
