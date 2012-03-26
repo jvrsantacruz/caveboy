@@ -525,6 +525,9 @@ int patternset_readpath(patternset * pset_ptr, const char * dir_path) {
 		}
 
 		png_close_file(&image);
+
+		/* Convert pattern to double and store it */
+		pattern_create(&(pset->input[i]), rawdata, pset->size, pset->bpp);
 	}
 
 	for(i = 0; i < npngs; ++i)
