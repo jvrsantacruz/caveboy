@@ -389,8 +389,7 @@ static size_t list_valid_pngs(const char * dir_path, size_t * npats, size_t * np
 		if( npngs >= listlen ) {
 			listlen = npngs + ndirpngs;
 
-			(*png_paths) = (char **) realloc (*png_paths,
-					sizeof(char *) * listlen);
+			(*png_paths) = (char **) realloc (*png_paths, sizeof(char *) * listlen);
 			if( *png_paths == NULL ) {
 				printerr("ERROR: Out of memory for png paths.\n");
 				return -1;

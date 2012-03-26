@@ -84,7 +84,7 @@ int perceptron_create(perceptron * per, int nin, int nhidden, int nout);
  */
 int perceptron_read(perceptron * per, FILE * perfile);
 
-/** 
+/**
  * Reads perceptron weights and structure from file.
  *
  * @param per Initialized perceptron.
@@ -111,7 +111,7 @@ int perceptron_print(perceptron per, FILE * perfile);
  */
 int perceptron_printpath(perceptron per, const char * perfile_path);
 
-/** 
+/**
  * Sets a given pattern as input.
  *
  * @param per Initialized perceptron.
@@ -146,7 +146,7 @@ int perceptron_free(perceptron * per_ptr);
  * @param limit Max number of epochs allowed for the learning.
  * @return 0 if unsuccessful, 1 otherwise
  */
-int perceptron_training(perceptron per, patternset pset, double lrate, double thres, int limit); 
+int perceptron_training(perceptron per, patternset pset, double lrate, double thres, int limit);
 
 /**
  * Computes backpropagation for a perceptron and a given pattern.
@@ -154,12 +154,12 @@ int perceptron_training(perceptron per, patternset pset, double lrate, double th
  *
  * @param per Initialized perceptron
  * @param pset Initialized patternset
- * @param lrate Learning rate 
+ * @param lrate Learning rate
  * @param thres Error threshold. Iteration stop condition.
  * @param stream Output stream
  * @return 0 if unsuccessful, 1 otherwise
  */
-int perceptron_trainingprint(perceptron per, patternset pset, double lrate, double thres, int limit, FILE * stream); 
+int perceptron_trainingprint(perceptron per, patternset pset, double lrate, double thres, int limit, FILE * stream);
 
 /**
  * Computes backpropagation for a perceptron and a given pattern.
@@ -167,12 +167,12 @@ int perceptron_trainingprint(perceptron per, patternset pset, double lrate, doub
  * @param per Initialized perceptron
  * @param pat Initialized pattern
  * @param code Output pattern
- * @param lrate Learning rate 
+ * @param lrate Learning rate
  * @return 0 if unsuccessful, 1 otherwise
  */
 int perceptron_backpropagation(perceptron per, pattern pat, size_t code, double lrate);
 
-/** 
+/**
  * Computes forward feeding for perceptron given a pattern.
  *
  * @param per Initialized perceptron
