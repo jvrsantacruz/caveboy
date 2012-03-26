@@ -361,6 +361,10 @@ static size_t list_valid_pngs(const char * dir_path, size_t * npats, size_t * np
 	(*pset_names) = (char **) malloc (ndirs * sizeof(char*));
 	for(d = 0; d < ndirs; ++d)
 		(*pset_names)[d] = NULL;
+	if( *pset_names == NULL ) {
+		printerr("ERROR: Couldn't alloc space for patternset names\n");
+		return 0;
+	}
 
 	/* Read all patternset dirs */
 	for(d = 0; d < ndirs; ++d){
@@ -486,11 +490,17 @@ int patternset_readpath(patternset * pset_ptr, const char * dir_path) {
 
 	/* Create patternset */
 	pset = (patternset) malloc (sizeof(patternset_t));
+	pset->codes = NULL;
+	pset->names = NULL;
 
 	/* List all pngs to be read */
 	if( (npngs = list_valid_pngs(dir_path, &npats, &npsets, &w, &h, &bpp,
-					&png_paths, &pset->codes, &(pset->names))) <= 0 ) {
+					&png_paths, &pset->codes, &(pset->names))) <= 0
+			|| png_paths == NULL
+			|| pset->codes == NULL
+			|| pset->names == NULL ) {
 		free(pset);
+		printerr("ERROR: Couldn't list pngs from %s\n", dir_path);
 		return TRUE;
 	}
 

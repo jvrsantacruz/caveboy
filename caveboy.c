@@ -96,15 +96,21 @@ int testing(perceptron per, patternset pset, double radio, char * weights_path, 
 	 */
 
 	/* Recuperate training patterns info. */
-		if( patternset_read_traininginfo(pset, tinfo_path) == FALSE)
+		if( patternset_read_traininginfo(pset, tinfo_path) == FALSE) {
+			printerr("ERROR: Couldn't read training info from: %s\n", tinfo_path);
 			return FALSE;
+		}
 
 		/* Recuperate trained net. Read weights. */
-		if( perceptron_readpath(&per, weights_path) == FALSE )
+		if( perceptron_readpath(&per, weights_path) == FALSE ) {
+			printerr("ERROR: Couldn't read weights from: %s\n", weights_path);
 			return FALSE;
+		}
 
-		if( pset->npats <= 0 )
+		if( pset->npats <= 0 ) {
+			printerr("No patterns to recognize\n");
 			return FALSE;
+		}
 
 		/* Alloc space for all patterns output */
 		codes = (int *) malloc (sizeof(int) * pset->npats);
@@ -240,10 +246,13 @@ int main(int argc, char * argv[] ) {
 		exit(EXIT_FAILURE);
 	}
 
-	if( do_training )
-		training(per, pset, max_epoch, alpha, weights_path, traininginfo_path, errorlog_path);
-	else
-		testing(per, pset, radio, weights_path, traininginfo_path);
+	if( do_training ) {
+		if( !training(per, pset, max_epoch, alpha, weights_path, traininginfo_path, errorlog_path) )
+			printerr("ERROR: Training failed\n");
+	} else {
+		if( !testing(per, pset, radio, weights_path, traininginfo_path) )
+			printerr("ERROR: Testing failed\n");
+	}
 
 	patternset_free(&pset);
 	perceptron_free(&per);
