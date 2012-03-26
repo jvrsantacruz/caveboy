@@ -474,16 +474,37 @@ int perceptron_free(perceptron * per_ptr){
 	}
 
 	/* Free Net */
-	free(*(per->net));
-	free(per->net);
+	if( per->net_raw != NULL )
+		free(per->net_raw);
+
+	if( per->net != NULL )
+		free(per->net);
 
 	/* Free Weights */
-	free(*(per->w));
-	free(per->w);
+	if( per->w_raw != NULL )
+		free(per->w_raw);
 
-	perceptron_backpropagation_free_d(per, &(per->d));
-	perceptron_backpropagation_free_dw(per, &(per->dw));
-	perceptron_backpropagation_free_rw(per, &(per->rw));
+	if( per->w != NULL )
+		free(per->w);
+
+	/* Free temporal mem */
+	if( per->d != NULL && per->d[0] != NULL )
+		free(per->d[0]);
+
+	if( per->d != NULL )
+		free(per->d);
+
+	if( per->dw_raw != NULL )
+		free(per->dw_raw);
+
+	if( per->dw )
+		free(per->dw);
+
+	if( per->rw != NULL && & per->rw[0] != NULL )
+		free(per->rw[0]);
+
+	if( per->rw != NULL )
+	free(per->rw);
 
 	free(per);
 	*per_ptr = NULL;
@@ -502,10 +523,10 @@ int perceptron_free(perceptron * per_ptr){
  * */
 int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 
-	int ni, nh, no;
+	int ni, nh, no, w_size, net_size;
 	int i, j;
 	double * raw = NULL;
-	perceptron per = NULL; 
+	perceptron per = NULL;
 
 	if((per = (perceptron) malloc (sizeof(perceptron_t))) == NULL)
 		return 1;
@@ -516,8 +537,18 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 	ni = per->n[0] = nin;
 	nh = per->n[1] = nhidden;
 	no = per->n[2] = nout;
+	/* 1 extra bias value for in and h layers */
+	net_size = ni + 1 + nh + 1 + no;
+	w_size = (ni + 1) * nh + (nh + 1) * no;
+
 	per->net = NULL;
 	per->w = NULL;
+	per->d = NULL;
+	per->rw = NULL;
+	per->dw = NULL;
+	per->net_raw = NULL;
+	per->w_raw = NULL;
+	per->dw_raw = NULL;
 
 	/* Set perceptron default functions */
 	perceptron_setfunc_init(per, perceptron_rand);
@@ -525,34 +556,26 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 	perceptron_setfunc_trans(per, perceptron_bipolarsigmoid);
 	perceptron_setfunc_trans_prima(per, perceptron_bipolarsigmoid_prima);
 
-	/*  Use bias as a regular neuron placed at 0 and always valued 1 */
-	ni += 1;
-	nh += 1;
-
 	/*  Net: Neuron values */
 	per->net = (double **) malloc (3 * sizeof(double*));
 	if( per->net == NULL )
 		return 1;
 
 	/* Alloc contiguous memory for net and split it in layers */
-	raw = (double *) malloc ((ni + nh + no) * sizeof(double));
+	raw = (double *) malloc (net_size * sizeof(double));
 	per->net[0] = &(raw[0]);
 	per->net[1] = &(raw[ni]);
 	per->net[2] = &(raw[ni+nh]);
+	per->net_raw = raw;
 
 	if( raw == NULL ){
 
 		printerr("perceptron_create: Couldn't alloc space for net.\n");
-
-		if( per->net[0] != NULL ) free(per->net[0]);
-		if( per->net[1] != NULL ) free(per->net[1]);
-		if( per->net[2] != NULL ) free(per->net[2]);
-		if( per->net != NULL ) free(per->net);
-
+		perceptron_free(&per);
 		return 0;
 	}
 
-	/*  Bias value its always 1. 
+	/*  Bias value its always 1.
 	 *  Will be set at last position in both layers by convention */
 	per->net[0][ni-1] = 1;
 	per->net[1][nh-1] = 1;
@@ -562,10 +585,7 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 
 	if( per->w == NULL ){
 		printerr("perceptron_create: Couldn't alloc space for weights.");
-		for(i = 0; i < 2; ++i)
-			free(per->net[i]);
-		free(per->net);
-
+		perceptron_free(&per);
 		return 0;
 	}
 
@@ -573,11 +593,12 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 	 * ninput neurons + bias to nhidden neurons  */
 
 	/* Alloc contiguous memory for weights and split it within the cube */
-	raw = (double *) malloc (((ni * (nh-1)) + (nh * no)) * sizeof(double));
+	raw = (double *) malloc (w_size * sizeof(double));
 	if( raw == NULL ){
 		printerr("perceptron_create: Couldn't alloc space for weight values.");
 		return 0;
 	}
+	per->w_raw = raw;
 
 	/* For all neuron and bias weight in the input and hidden layer */
 	for(i = 0; i < 2; ++i) {
@@ -590,7 +611,7 @@ int perceptron_create(perceptron * per_ptr, int nin, int nhidden, int nout){
 
 	/* Init delta temporal matrix and cube */
 	perceptron_backpropagation_alloc_d(per, &(per->d));
-	perceptron_backpropagation_alloc_dw(per, &(per->dw));
+	perceptron_backpropagation_alloc_dw(per, &(per->dw), &(per->dw_raw));
 	perceptron_backpropagation_alloc_rw(per, &(per->rw));
 
 	/* Set all neurons and weights */

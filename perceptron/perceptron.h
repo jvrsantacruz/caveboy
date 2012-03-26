@@ -44,6 +44,13 @@ typedef struct {
 	double ** rw;   /* neuron raw inputs */
 	double *** dw;  /* delta weights */
 
+	/* Sizes and pointers to contiguous data
+	 * in matrices and cubes */
+	int net_wize, w_size, d_size, rw_size, dw_size;
+	double * net_raw;
+	double * w_raw;
+	double * dw_raw;
+
 	double(*init)();              /* initialization function */
 	double(*trans)(double);       /* transition function */
 	double(*trans_prima)(double); /* prima transition function */
