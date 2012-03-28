@@ -131,7 +131,7 @@ int return_codes(int * codes, int n, int * allcodes, int nall){
  * @param newpset Uninitialized patternset by reference.
  * @param rank Processor rank.
  * @param size Comm size. */
-int distribute_patterns(patternset pset, patternset * newpset, int rank, int size) {
+int distribute_patterns(patternset pset, patternset * newpset_ptr, int rank, int size) {
 
 	/* Each process receives an equal slice of patterns.
 	 * Root gets the slice plus the spare patterns. */
@@ -146,19 +146,22 @@ int distribute_patterns(patternset pset, patternset * newpset, int rank, int siz
 	/* How far away is the next value */
 	int * scounts = (int *) malloc (size * sizeof(int));
 	int * strides = (int *) malloc (size * sizeof(int));
+	patternset newpset = NULL;
 
 	/* Create new patternset */
-	patternset_create(newpset,
+	patternset_create(&newpset,
 			rank == 0 ? rootsize : partsize,
 			patsize,
 			pset->npsets);
 	patternset_init(newpset);
 
+	*newpset_ptr = newpset;
+
 	/* Set how many doubles are to be sent/received */
 	scounts[0] = rootsize_units;
 	strides[0] = 0;
 
-	for(i = 1; i < sizes; ++i) {
+	for(i = 1; i < size; ++i) {
 		scounts[i] = partsize_units;
 		strides[i] = rootsize_units + (i-1) * partsize_units;
 	}
@@ -482,7 +485,7 @@ int main(int argc, char * argv[] ) {
 	}
 
 	/* Distribute patterns to all processors */
-	distribute_patterns(pset, &wpset, rank, size);
+	distribute_patterns(pset, &wpset, mpi_rank, mpi_size);
 
 	if( do_training ) {
 		/* Also distribute output codes when training, they're necessary */
