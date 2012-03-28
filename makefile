@@ -19,9 +19,8 @@ CFLAGS := -g -pg -enable-checking -ggdb -Wall -O0 -pedantic -std=c99 -DDEBUG -Ip
 #CFLAGS := -Wall -O3 -pedantic -std=c99 -Iperceptron 
 LDFLAGS := -lm -lz 
 
-MPICC := mpicc
-MPI_CFLAGS := $(CFLAGS) $(mpicc --showme:compile)
-MPI_LDFLAGS := $(LDFLAGS) $(mpicc --showme:compile) -lmpi
+# Specific-rule variables for mpi
+${EXEMPI}: CC := mpicc
 
 .PHONY: deps clean slice_videos analyze
 
@@ -36,7 +35,7 @@ ${EXE}: ${EXE}.c ${OBJS}
 
 ${EXEMPI}: ${EXEMPI}.c ${OBJS}
 	@echo Compiling ${EXEMPI}
-	$(MPICC) $(MPI_CFLAGS) -o $@ $^ $(MPI_LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 slice_videos: ${VIDEOS}
 	@echo Slicing videos...
