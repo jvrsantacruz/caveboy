@@ -36,6 +36,7 @@ typedef double * pattern;
  * @param dir_path Path to the root patternsets directory.
  * @return != 0 on success.
  */
+int patternset_readpath(patternset * pset_ptr, const char * dir_path);
 
 /* Creates an empty patternset
  * No memory is allocated. */
@@ -43,7 +44,7 @@ int patternset_create(patternset * pset_ptr, int npats, int patsize, int npsets)
 
 /* Allocates previously created patternset
  * No names are allocated inside. */
-int patternset_init(patternset * pset_ptr);
+int patternset_init(patternset pset);
 
 /* Frees an allocated patternset */
 int patternset_free(patternset * pset_ptr);

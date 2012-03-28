@@ -115,9 +115,10 @@ int pattern_create(pattern * pat, unsigned char * upattern, size_t size, size_t 
 	return size/bpp;
 }
 
-static int patternset_init(patternset pset, size_t npsets,
-		size_t npats, size_t patsize) {
-	int i = 0;
+int patternset_create(patternset * pset_ptr, int npats, int patsize, int npsets){
+	patternset pset = NULL;
+
+	pset = (patternset) malloc (sizeof(patternset_t));
 
 	if( pset == NULL )
 		return FALSE;
@@ -126,6 +127,22 @@ static int patternset_init(patternset pset, size_t npsets,
 	pset->npsets = npsets;
 	pset->npats = npats;
 	pset->size = pset->w = pset->h = pset->bpp = 0;
+
+	*pset_ptr = pset;
+
+	return TRUE;
+}
+
+int patternset_init(patternset pset){
+	int i = 0,
+		npats = pset->npats,
+		patsize = pset->size;
+
+	if( pset == NULL )
+		return FALSE;
+
+	pset->input = NULL;
+	pset->input_raw = NULL;
 
 	/* Alloc row pointers for each pattern */
 	pset->input = (double **) malloc (sizeof(double *) * npats);
@@ -476,7 +493,9 @@ int patternset_readpath(patternset * pset_ptr, const char * dir_path) {
 	png_t image;
 
 	/* Create patternset */
-	pset = (patternset) malloc (sizeof(patternset_t));
+	patternset_create(&pset, npsets, npats, w*h);
+	pset->codes = NULL;
+	pset->names = NULL;
 
 	/* List all pngs to be read */
 	if( (npngs = list_valid_pngs(dir_path, &npats, &npsets, &w, &h, &bpp,
@@ -486,15 +505,14 @@ int patternset_readpath(patternset * pset_ptr, const char * dir_path) {
 	}
 
 	/* Initialize patternset values */
-	patternset_init(pset, npsets, npats, w*h);
 	pset->w = w;
 	pset->h = h;
 	pset->bpp = bpp;
-	pset->size = w * h * bpp;
+	patternset_init(pset);
 
 	/* Temp buffer to store raw image data
 	 * before converting it to double in the pattern */
-	rawdata = (unsigned char *) malloc (sizeof(unsigned char) * pset->size);
+	rawdata = (unsigned char *) malloc (sizeof(unsigned char) * w * h * bpp);
 
 	/* Initialize pnglite */
 	png_init(NULL, NULL);
