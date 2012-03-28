@@ -29,6 +29,8 @@ all: ${TARGETS}
 deps:
 	make -C zlib
 
+mpi: ${EXEMPI}
+
 ${EXE}: ${EXE}.c ${OBJS}
 	@echo Compiling ${EXE}
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
