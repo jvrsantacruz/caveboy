@@ -272,7 +272,7 @@ int training(perceptron per, patternset pset, int max_epoch, double
  * 3. Return obtained codes for each node.
  * 4. Join all codes into a single result.
  */
-int testing(perceptron per, patternset pset, int npatsall, double radio, char * weights_path, char * tinfo_path) {
+int testing(perceptron per, patternset pset, int npatsall, double radio, char * weights_path, char * tinfo_path, int size, int rank) {
 	size_t pat = 0, n = 0, matches = 0;
 	int chosen = 0;
 	int * codes = NULL;
@@ -350,7 +350,7 @@ int testing(perceptron per, patternset pset, int npatsall, double radio, char * 
 	 /* Print results */
 	 if( rank == 0 ){
 		 for(pat = 0; pat < npatsall; ++pat) {
-			 printf("Output for %i: %i\n", pat, allcodes[pat]);
+			 printf("Output for %ld: %d\n", pat, allcodes[pat]);
 		 }
 	 }
 
@@ -497,7 +497,7 @@ int main(int argc, char * argv[] ) {
 		distribute_codes(pset, wpset, mpi_rank, mpi_size);
 		training(per, pset, max_epoch, alpha, weights_path, traininginfo_path, errorlog_path, mpi_size, mpi_rank);
 	} else {
-		testing(per, pset, pset->npats, radio, weights_path, traininginfo_path);
+		testing(per, pset, pset->npats, radio, weights_path, traininginfo_path, mpi_size, mpi_rank);
 	}
 
 	clean_resources(&per, &pset);
