@@ -230,10 +230,10 @@ int distribute_codes(patternset pset, patternset newpset, int rank, int size) {
  * 		5. [Future] Master calibrates workload per node
  * 		      and adjusts pattern distribution.
  */
-int training(perceptron per, patternset pset, int max_epoch, double alpha,
-		char * weights_path, int rank, int size;
-		char * tinfo_path, char * error_path){
-	FILE * error_file = NULL;
+int training(perceptron per, patternset pset, int max_epoch, double
+		alpha, char * weights_path, 
+		char * tinfo_path, char * error_path, int rank, int size){
+	int epoch = 0, pat = 0;
 
 	/* Save obtained training info. Basically, patternsets names */
 	if( rank == 0 )
@@ -242,7 +242,7 @@ int training(perceptron per, patternset pset, int max_epoch, double alpha,
 	for(epoch = 0; epoch < max_epoch; ++epoch) {
 
 		/* Send root weights in each processor */
-		broadcast_weights(pset);
+		broadcast_weights(per);
 
 		/* Compute backpropagation for each available pattern.
 		 * Do not update weights, get only deltas in per->dw */
@@ -250,7 +250,7 @@ int training(perceptron per, patternset pset, int max_epoch, double alpha,
 			perceptron_backpropagation_raw(per, pset->input[pat], pset->codes[pat], alpha, 0);
 
 		/* Get deltas back from each processor and compute new weights */
-		compute_new_weights(per, rank) */
+		compute_new_weights(per, rank);
 
 		/* TODO: get performance stats and adjust pattern distribution */
 	}
@@ -494,8 +494,8 @@ int main(int argc, char * argv[] ) {
 
 	if( do_training ) {
 		/* Also distribute output codes when training, they're necessary */
-		training(per, pset, max_epoch, alpha, weights_path, traininginfo_path, errorlog_path);
 		distribute_codes(pset, wpset, mpi_rank, mpi_size);
+		training(per, pset, max_epoch, alpha, weights_path, traininginfo_path, errorlog_path, mpi_size, mpi_rank);
 	} else {
 		testing(per, pset, pset->npats, radio, weights_path, traininginfo_path);
 	}
