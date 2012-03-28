@@ -193,11 +193,16 @@ int distribute_codes(patternset pset, patternset newpset, int rank, int size) {
 	int rootsize = partsize + (pset->npats % size);
 	int i = 0;
 
+	/* How many doubles are to be read */
+	/* How far away is the next value */
+	int * scounts = (int *) malloc (size * sizeof(int));
+	int * strides = (int *) malloc (size * sizeof(int));
+
 	/* Set how many doubles are to be sent/received */
 	scounts[0] = rootsize;
 	strides[0] = 0;
 
-	for(i = 1; i < sizes; ++i) {
+	for(i = 1; i < size; ++i) {
 		scounts[i] = partsize;
 		strides[i] = rootsize + (i-1) * partsize;
 	}
@@ -489,8 +494,8 @@ int main(int argc, char * argv[] ) {
 
 	if( do_training ) {
 		/* Also distribute output codes when training, they're necessary */
-		distribute_codes(pset, wpset, rank, size);
 		training(per, pset, max_epoch, alpha, weights_path, traininginfo_path, errorlog_path);
+		distribute_codes(pset, wpset, mpi_rank, mpi_size);
 	} else {
 		testing(per, pset, pset->npats, radio, weights_path, traininginfo_path);
 	}
