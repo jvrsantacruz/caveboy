@@ -455,7 +455,7 @@ int main(int argc, char * argv[] ) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
 
 	/* Root loads the samples and gets the perceptron size */
-	if( rank == 0 ){
+	if( mpi_rank == 0 ){
 
 		/* Read patterns.
 		 * BEWARE IO operations and lots of memory being allocated here.  */
@@ -479,7 +479,7 @@ int main(int argc, char * argv[] ) {
 	 broadcast_sizes(&nin, &nout, &nh, &npats, rank);
 
 	 /* Create an empty patternset with the right sizes but no memory */
-	if( rank != 0 )
+	if( mpi_rank != 0 )
 		patternset_create(&pset, npats, nin, nout);
 
 	/* Create perceptron */
