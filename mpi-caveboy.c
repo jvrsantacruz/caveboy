@@ -475,8 +475,8 @@ int main(int argc, char * argv[] ) {
 	}
 
 	/* Receive perceptron sizes nin, nout, nh
-	 * If we're rank 0, broadcast sizes, if we're not, receive them. */
-	 broadcast_sizes(&nin, &nout, &nh, &npats, rank);
+	 * If we're mpi_rank 0, broadcast sizes, if we're not, receive them. */
+	 broadcast_sizes(&nin, &nout, &nh, &npats, mpi_rank);
 
 	 /* Create an empty patternset with the right sizes but no memory */
 	if( mpi_rank != 0 )
