@@ -1,4 +1,4 @@
-DEPS := pnglite/pnglite.h perceptron/pattern.h perceptron/perceptron.h
+DEPS := lodepng/lodepng.h pnglite/pnglite.h perceptron/pattern.h perceptron/perceptron.h
 
 SRC := caveboy.c mpi-caveboy.c
 OBJS += $(DEPS:.h=.o)

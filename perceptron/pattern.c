@@ -324,6 +324,8 @@ static size_t list_valid_pngs(const char * dir_path, size_t * npats, size_t * np
 	/* Initial values for external variables */
 	*npats = *npsets = 0;
 	*w = *h = *b = -1;
+	*png_paths = NULL;
+	*png_codes = NULL;
 
 	/* The png images are supposed to be
 	 * in a 2 layers structure like the following:
@@ -396,8 +398,7 @@ static size_t list_valid_pngs(const char * dir_path, size_t * npats, size_t * np
 		if( npngs >= listlen ) {
 			listlen = npngs + ndirpngs;
 
-			(*png_paths) = (char **) realloc (*png_paths,
-					sizeof(char *) * listlen);
+			(*png_paths) = (char **) realloc (*png_paths, sizeof(char *) * listlen);
 			if( *png_paths == NULL ) {
 				printerr("ERROR: Out of memory for png paths.\n");
 				return -1;
@@ -447,7 +448,8 @@ static size_t list_valid_pngs(const char * dir_path, size_t * npats, size_t * np
 					return 0;
 				}
 
-				strcpy((*png_paths)[npngs], full_png_path);
+				strncpy((*png_paths)[npngs], full_png_path, strnlen(full_png_path, PATH_MAX));
+				//(*png_paths)[npngs][strnlen((*png_paths)[npngs], PATH_MAX) - 1] = '\0';
 
 				/* Set code for dir */
 				(*png_codes)[npngs] = ndirvalid;
@@ -508,6 +510,7 @@ int patternset_readpath(patternset * pset_ptr, const char * dir_path) {
 	pset->w = w;
 	pset->h = h;
 	pset->bpp = bpp;
+	pset->size= w * h * bpp;
 	patternset_init(pset);
 
 	/* Temp buffer to store raw image data
@@ -519,6 +522,7 @@ int patternset_readpath(patternset * pset_ptr, const char * dir_path) {
 
 	/* Open each valid image */
 	for(i = 0; i < npngs; ++i){
+		png_paths[i][ strnlen(png_paths[i], PATH_MAX) - 1 ] = '\0';
 		if( (ret = png_open_file(&image, png_paths[i])) != PNG_NO_ERROR) {
 			printerr("WARNING: Couldn't open PNG image: '%s': %s\n",
 					png_paths[i], png_error_string(ret));
@@ -536,8 +540,9 @@ int patternset_readpath(patternset * pset_ptr, const char * dir_path) {
 		png_close_file(&image);
 	}
 
+	/* 
 	for(i = 0; i < npngs; ++i)
-		free(png_paths[i]);
+		free(png_paths[i]);   */
 	free(png_paths);
 
 	printerr("Pattern loading finished. %zd patterns read from '%s'\n", npats, dir_path);

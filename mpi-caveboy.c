@@ -80,7 +80,7 @@ int broadcast_sizes(int * nin, int * nh, int * nout, int * npats, int rank) {
 /* Set weights from master to all other nodes */
 int broadcast_weights(perceptron per){
 
-	MPI_Bcast(&(per->w[0][0][0]), per->w_size, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&(per->w[0][0][0]), per->wsize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 	set_cube_pointers(per->w, &(per->w[0][0][0]), per->n);
 
@@ -93,7 +93,7 @@ int compute_new_weights(perceptron per, int rank){
 
 	MPI_Reduce( MPI_IN_PLACE,              /* Use current root deltas */
 			        &(per->dw[0][0][0]),   /* Current deltas */
-			        per->w_size,            /* weights cube sizes */
+			        per->wsize,            /* weights cube sizes */
 			        MPI_DOUBLE,
 			        MPI_SUM,
 			        0,
@@ -101,7 +101,7 @@ int compute_new_weights(perceptron per, int rank){
 
 	/* Sum weights on root */
 	if( rank == 0 ){
-		size_t n = per->w_size;
+		size_t n = per->wsize;
 		double * w = &(per->w[0][0][0]);
 		double * dw = &(per->dw[0][0][0]);
 
