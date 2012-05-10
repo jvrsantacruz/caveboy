@@ -34,6 +34,9 @@
  #define TRUE !FALSE
 #endif
 
+texture<float, 1, cudaReadModeElementType> tex_net_layer;
+texture<float, 1, cudaReadModeElementType> tex_weights;
+
 static double perceptron_mean_square_error(double * actual, size_t code, int n){
 	int i = 0;
 	double dif,sum;
@@ -118,6 +121,153 @@ int perceptron_feedforward(perceptron per, pattern pat){
 			}
 
 	return 1;
+}
+
+__global__ void feedforward_layer_kernel(float * resultlayer, int width, int neurons, int threadSize){
+	int idx = blockIdx.x * blockDim.x + threadIdx.x + threadSize;
+	int max = idx + threadSize;
+	int i = 0, n = neurons;
+
+	for(i = idx; i < max; ++i) {
+		while( n-- )
+			sum += tex1Dfetch(tex_net_layer, n) * (*(tex1Dfetch(tex_weights, (width * n) + i)));
+
+		resultlayer[i] = sum;
+	}
+}
+
+__global__ void bipolarsigmoid_kernel(float * v, int threadSize){
+	int idx = blockIdx.x * blockDim.x + threadIdx.x + threadSize;
+	int max = idx + threadSize;
+
+	for(; idx < max; ++idx)
+		v[idx] = 2.0/(1 + exp(-v[idx])) - 1;
+}
+
+
+/**
+ * Computes backpropagation for a perceptron and a given pattern.
+ * Raw version which perform the calculations and
+ *
+ * @param per Initialized perceptron
+ * @param pat Initialized pattern
+ * @param code Active neuron in output pattern
+ * @param lrate Learning rate
+ * @return 0 if unsuccessful, 1 otherwise
+ */
+int perceptron_backpropagation_raw_cuda(perceptron per, pattern pat, size_t code,
+		double lrate){
+	int n = 0, i = 0, j = 0, k = 0, err = 1;
+	double Dj_in, Dj, sum;
+
+	/* Rename temp delta vectors */
+	double ** d = per->d,     /* Deltas */
+		   ** rin = per->rw, /* Raw neuron inputs */
+		   *** dw = per->dw;  /* Weight Deltas */
+
+	/* Set input layer values
+	 * We just make net[0] to point to the pattern so we don't have to copy all
+	 * of it each time. */
+	per->net[0] = pat;
+
+	/* Compute feed forward */
+
+	/* For the input and hidden layers */
+	for(i = 0; i < 2; ++i) {
+
+		/* Sum all neurons (j=n[i]) in layer by its
+		 * weight w[j][k] to a certain neuron (k) */
+		float * net = NULL, * weights = NULL; 
+
+
+		int ndevices = 0;
+		/* Calculate how many neurons will calculate each thread */
+		int threadSize = 512; /* Neurons to calculate by each processor */ 
+		int nThreads = 256;  /* Full ocupation */
+		int nBlocks = (per->n[i + 1] / threadSize) / nThreads;  /* n total Blocks */
+
+		cudaGetDeviceCount(&ndevices);
+
+		nBlocks /= ndevices; /* Blocks per grid */
+
+		cudaMalloc((void **) &rawnet, per->n[i + 1] * sizeof(float));
+		cudaMalloc((void **) &net, (per->n[i] + 1) * sizeof(float));
+		cudaMalloc((void **) &weights , (per->n[i] + 1) * (per->n[i+1]) * sizeof(float));
+
+		/* Set result to 0, and copy net and weights */
+		cudaMemset(rawnet, 0, per->n[i + 1] * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(net, per->net[i], (per->n[i] + 1) * sizeof(float), cudaMemcpyHostToDevice);
+		cudaMemcpy(weights, per->w[i], (per->n[i] + 1) * (per->n[i+1]) * sizeof(float), cudaMemcpyHostToDevice);
+
+		/* Set read-only memory to textures */
+		cudaBindTexture(0, &tex_net_layer, net, (per->n[i] + 1));
+		cudaBindTexture(0, &tex_weights, weights, (per->n[i] + 1) * (per->n[i+1])); 
+
+		feedforward_layer_kernel(rawnet, per->n[i] + 1, per->n[i+1], threadSize);
+
+		/* Bring raw results from device */
+		cudaMemcpy(rin[i], rawnet, per->n[i + 1] * sizeof(float), cudaMemcpyDeviceToHost);
+
+		/* Compute  bipolarsigmoid over the already computed raw results */
+		bipolarsigmoid_kernel(rawnet, threadSize);
+
+		/* Bring computed results from device */
+		cudaMemcpy(per->net[i + 1], rawnet, per->n[i + 1] * sizeof(float), cudaMemcpyDeviceToHost);
+
+		cudaUnbind(tex_net_layer);
+		cudaUnbind(tex_weights);
+
+		cudaFree(rawnet);
+		cudaFree(net);
+		cudaFree(weights);
+	}
+
+	/* Calculate output layer (i = 2) backpropagation */
+	for(k = 0; k < per->n[2]; ++k){
+		/* Get the already computed Yk in */
+		/* Yk_in = perceptron_weighted_sum(per->net[1], per->w[1], k, per->n[1] + 1); */
+		/* Yk_in = rin[1][k]; */
+
+		/* Calculate dk against desired output (neuron k should match the code) */
+		d[1][k] = (ISACTIVE(k, code) - per->net[2][k]) * perceptron_bipolarsigmoid_prima(rin[1][k]);
+
+		/* Calculate weight deltas for all weights to this neuron from the previous layer */
+		for(j = 0; j < per->n[1] + 1; ++j)
+			dw[1][j][k] = lrate * d[1][k] * per->net[1][j];
+	}
+
+	/* Calculate hidden layer (i = 1) backpropagation */
+	for(j = 0; j < per->n[1]; ++j){
+		/* Get the already computed Zj_in */
+		/* Zj_in = perceptron_weighted_sum(per->net[0], per->w[0], j, per->n[0] + 1); */
+		/* Zj_in = rin[0][j]; */
+
+		/* Calculate Dj_in based on output layer deltas and the hidden layer weights */
+		Dj_in = 0;
+		for(k = 0; k < per->n[2]; ++k)
+			Dj_in += d[1][k] * per->w[1][j][k];
+
+		/* Calculate delta */
+		Dj = Dj_in * perceptron_bipolarsigmoid_prima(rin[0][j]);
+
+		/* Calculate weight deltas for all weights to this neuron from the previous layer */
+		for(i = 0; i < per->n[0] + 1; ++i)
+			dw[0][i][j] = lrate * Dj * per->net[0][i];
+	}
+
+	/* Update weights */
+	for(i = 0; i < per->w_size; ++i)
+		per->w_raw[i] += per->dw_raw[i];
+
+	/* For the weighted layers
+	for(i = 0; i < 2; ++i)
+		* For each neuron (+ bias) *
+		for(j = 0; j < per->n[i] + 1; ++j)
+			* To all neurons in the next layer *
+			for(k = 0; k < per->n[i + 1]; ++k)
+				per->w[i][j][k] += dw[i][j][k]; */
+
+	return err;
 }
 
 /**
