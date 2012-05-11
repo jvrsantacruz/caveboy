@@ -123,10 +123,13 @@ int perceptron_feedforward(perceptron per, pattern pat){
 	return 1;
 }
 
-__global__ void feedforward_layer_kernel(float * resultlayer, int width, int neurons, int threadSize){
+__global__ void feedforward_layer_kernel(float * resultlayer, int width, int neurons, int threadSize, int totalSize){
 	int idx = blockIdx.x * blockDim.x + threadIdx.x + threadSize;
 	int max = idx + threadSize;
 	int i = 0, n = neurons;
+
+	if( max > totalSize )
+		max = totalSize;
 
 	for(i = idx; i < max; ++i) {
 		while( n-- )
@@ -136,9 +139,12 @@ __global__ void feedforward_layer_kernel(float * resultlayer, int width, int neu
 	}
 }
 
-__global__ void bipolarsigmoid_kernel(float * v, int threadSize){
+__global__ void bipolarsigmoid_kernel(float * v, int threadSize, int totalSize){
 	int idx = blockIdx.x * blockDim.x + threadIdx.x + threadSize;
 	int max = idx + threadSize;
+
+	if( max > totalSize )
+		max = totalSize;
 
 	for(; idx < max; ++idx)
 		v[idx] = 2.0/(1 + exp(-v[idx])) - 1;
@@ -203,13 +209,13 @@ int perceptron_backpropagation_raw_cuda(perceptron per, pattern pat, size_t code
 		cudaBindTexture(0, &tex_net_layer, net, (per->n[i] + 1));
 		cudaBindTexture(0, &tex_weights, weights, (per->n[i] + 1) * (per->n[i+1])); 
 
-		feedforward_layer_kernel(rawnet, per->n[i] + 1, per->n[i+1], threadSize);
+		feedforward_layer_kernel(rawnet, per->n[i] + 1, per->n[i+1], threadSize, per->n[i] + 1);
 
 		/* Bring raw results from device */
 		cudaMemcpy(rin[i], rawnet, per->n[i + 1] * sizeof(float), cudaMemcpyDeviceToHost);
 
 		/* Compute  bipolarsigmoid over the already computed raw results */
-		bipolarsigmoid_kernel(rawnet, threadSize);
+		bipolarsigmoid_kernel(rawnet, threadSize, per->n[i] + 1);
 
 		/* Bring computed results from device */
 		cudaMemcpy(per->net[i + 1], rawnet, per->n[i + 1] * sizeof(float), cudaMemcpyDeviceToHost);
