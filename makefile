@@ -14,10 +14,10 @@ VIDEOS := ${VIDEOS_DIR}/*.*
 
 CC=gcc
 # Debug flags
-CFLAGS := -g -pg -enable-checking -ggdb -Wall -O0 -pedantic -std=c99 -DDEBUG -Iperceptron 
+CFLAGS := -g -pg -enable-checking -ggdb -Wall -O0 -pedantic -std=c99 -DDEBUG -Iperceptron -fopenmp -lgomp
 # Production flags
 #CFLAGS := -Wall -O3 -pedantic -std=c99 -Iperceptron 
-LDFLAGS := -lm -lz 
+LDFLAGS := -lm -lz -fopenmp
 
 .PHONY: deps clean slice_videos analyze
 
