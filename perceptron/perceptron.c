@@ -119,7 +119,7 @@ int perceptron_feedforward(perceptron per, pattern pat){
 	/* Calculate output layer value */
 
 /* Start Open MP */
-#pragma omp parallel for default(none) private(i, j, k, sum, n) shared(per)
+#pragma omp parallel for default(none) private(i, j, k, sum, n) shared(per->net)
 
 	/* For the input and hidden layers */
 	for(i = 0; i < 2; ++i)
@@ -193,7 +193,7 @@ int perceptron_backpropagation_raw(perceptron per, pattern pat, size_t code,
 
 
 /* Start Open MP */
-#pragma omp parallel for default(none) private(j,k,rin,per,code,lrate) shared(d,dw)
+#pragma omp parallel for default(none) private(j,k,rin,per->net,code,lrate) shared(d,dw)
 
 	/* Calculate output layer (i = 2) backpropagation */
 	for(k = 0; k < per->n[2]; ++k){
@@ -211,7 +211,7 @@ int perceptron_backpropagation_raw(perceptron per, pattern pat, size_t code,
 
 	/* Calculate hidden layer (i = 1) backpropagation */
 /* Start Open MP */
-#pragma omp parallel for default(none) private(i,j,k,Dj_in,Dj,lrate,per,rin,d) shared(dw)
+#pragma omp parallel for default(none) private(i,j,k,Dj_in,Dj,lrate,per->w,rin,d) shared(dw)
 	/* Calculate hidden layer (i = 1) backpropagation */
 	for(j = 0; j < per->n[1]; ++j){
 		/* Get the already computed Zj_in */
@@ -236,7 +236,7 @@ int perceptron_backpropagation_raw(perceptron per, pattern pat, size_t code,
 		/* Update weights */
 		/* For the weighted layers */
 /* Start Open MP */
-#pragma omp parallel for default(none) private(i,j,k,dw) shared(per)
+#pragma omp parallel for default(none) private(i,j,k,dw) shared(per->w)
 		for(i = 0; i < 2; ++i)
 			/* For each neuron (+ bias) */
 			for(j = 0; j < per->n[i] + 1; ++j)
